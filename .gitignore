@@ -10,3 +10,6 @@ helper
 #Hardhat files
 cache
 artifacts
+
+# I dont want to track
+contracts/Brigde.sol
