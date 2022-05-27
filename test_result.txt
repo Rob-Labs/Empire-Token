@@ -1,63 +1,101 @@
-  Empire Token
-    Check Burn and Mint from Bridge
-      ✔ Correct balance change after burn (182ms)
-      ✔ Correct balance change after mint (58ms)
+Empire Token Deployment Test
+    ✔ Has a correct name 'EmpireToken'
+    ✔ Has a correct symbol 'EMPIRE'
+    ✔ Has 9 decimals
+    ✔ Has 1 billion tokens with 9 decimal units (10^18)
+    ✔ Correct Marketing address wallet
+    ✔ Correct Team address wallet
+    ✔ Correct Liquidity address wallet set to Deployer Address
+    ✔ Correct Dead (burn) address wallet
+    ✔ Trading is disabled by default
+    ✔ All Empire Token supply send to deployer address
 
-  Empire Token
-    Deployment
-      ✔ Has a correct name 'EmpireToken'
-      ✔ Has a correct symbol 'EMPIRE'
-      ✔ Has 9 decimals
-      ✔ Has 1 billion tokens with 9 decimal units (10^18)
-      ✔ Correct Marketing address wallet
-      ✔ Correct Team address wallet
-      ✔ Correct Liquidity address wallet
-      ✔ Correct Dead (burn) address wallet
-
-  Empire Token
-    Distribution
-      ✔ Deployer start with 100% balance
-      ✔ Users start with empty balance
-
-  Empire Token
-    Integrate with Pancakeswap / AMM
-      Liquidity Test
-        ✔ Should be able to add liquidity (2274ms)
-        ✔ Should be able to remove liquidity (2626ms)
-
-  Empire Token
+  Empire Token Write Function Test
     Public Write Methods
-      ✔ Only deployer can use them
-      ✔ Changes the Marketing Wallet (39ms)
-      ✔ Changes the Team Wallet
-      ✔ Excludes from fees (45ms)
-      ✔ Toggles SwapAndLiquify (45ms)
-      ✔ Changes the Liquidity Wallet
+      Approval Function
+        ✔ Should emit Approval events
+        ✔ Spender Can't be ZERO Address (0x)
+      Increase Allowance Function
+        ✔ Should emit Approval events
+        ✔ Spender Can't be ZERO Address (0x)
+      Decrease Allowance Function
+        ✔ Should emit Approval events
+        ✔ Allowance MUST not below 0 (zero)
+      Deliver Function
+        ✔ Should emit LogDeliver events
+        ✔ Deliver function can't be call by excluded from reward address (63ms)
+    Only Owner Write Methods
+      excludeFromReward Function
+        ✔ Only deployer can use this function
+        ✔ Should emit LogExcludeFromReward event
+        ✔ Function should correct change state (1004ms)
+      includeInReward Function
+        ✔ Only deployer can use this function
+        ✔ Should Reverted if already include in reward
+        ✔ Should emit LogIncludeInReward event (354ms)
+        ✔ Function should correct change state (51ms)
+      setAutomatedMarketMakerPair Function
+        ✔ Only deployer can use this function
+        ✔ Should emit LogSetAutomatedMarketMakerPair event
+        ✔ Function should correct change state
+      setBridge Function
+        ✔ Only deployer can use this function
+        ✔ Should Reverted if bridge address is same with current bridge address (1298ms)
+        ✔ Should emit LogSetBridge event
+      setBurnWallet Function
+        ✔ Only deployer can use this function
+        ✔ Should emit LogSetBridge event
+      setBuyFees Function
+        ✔ Only deployer can use this function
+        ✔ Should emit LogSetBuyFees event
+      setSellFees Function
+        ✔ Only deployer can use this function
+        ✔ Should emit LogSetSellFees event
+      setEnableTrading Function
+        ✔ Only deployer can use this function
+        ✔ Should emit LogSetEnableTrading event
+      setExcludeFromFee Function
+        ✔ Only deployer can use this function
+        ✔ Should emit LogSetExcludeFromFee event
+      setMarketingWallet Function
+        ✔ Only deployer can use this function
+        ✔ Should emit LogSetMarketingWallet event
+      setTeamWallet Function
+        ✔ Only deployer can use this function
+        ✔ Should emit LogSetTeamWallet event
+      setRouterAddress Function
+        ✔ Only deployer can use this function
+        ✔ Should emit LogSetRouterAddress event
+      setSwapAndLiquifyEnabled Function
+        ✔ Only deployer can use this function
+        ✔ Should emit LogSwapAndLiquifyEnabledUpdated event
+      setSwapTokensAmount Function
+        ✔ Only deployer can use this function
+        ✔ Should emit LogSetSwapTokensAmount event
 
-  Empire Token
-    Transactions at Presale Time
-      ✔ Transfer fails when Presale Time although sender have enough tokens
+  Empire Token Interaction with bridge
+    Check Lock and Unlock from Bridge
+      ✔ Correct balance change after lock (112ms)
+      ✔ Correct balance change after unlock (44ms)
 
-  Empire Token Reflection and Fee Test
-    Transfer between account, exclude AMM Pair address
-      ✔ Should doesn't takes fee when transfer between wallets (53ms)
-    Transfer from or to AMM Pair address (Buy Sell Transfer)
-      ✔ Make sure we already add Liquidity
-      ✔ Should be take fee when buy Empire although buyer is exclude from fee (695ms)
-      ✔ Should be take correct fee when buy Empire and Reflect Fee to Holder (1001ms)
-      ✔ Should be take fee when sell Empire and deliver to marketing and team (713ms)
-
-  Empire Token
-    Integrate with Pancakeswap / AMM
-      Swap Test
-        ✔ Should be able to buy Empire (760ms)
-        ✔ Should be able to sell Empire (974ms)
-
-  Empire Token
-    Transactions After Presale Finish
-      ✔ Transfers tokens between accounts (47ms)
-      ✔ Transfer fails when sender doesn't have enough tokens
-      ✔ Updates balances after transfers (65ms)
+  Empire Token Transfer Test
+    Transfer at Presale Time
+      ✔ Transfer when Presale Time require sender and receiver is excluded from fee (1295ms)
+    Transfer at Presale Time
+      ✔ Transfer when Presale Time require sender and receiver is excluded from fee (1295ms)
+    Transfer after Presale Time
+      Transfers tokens between accounts
+        ✔ Transfer fails when sender doesn't have enough tokens
+        ✔ Correct updates balances after transfers (44ms)
+    Liquidity, Trade and Reflection Test
+      Liquidity Test
+        ✔ Should be able to add liquidity (2032ms)
+        ✔ Should be able to remove liquidity (3087ms)
+      Trading (Buy /Sell) Test
+        ✔ User should be able to buy and sell EMPIRE on AMM (5293ms)
+        ✔ Should be take fee when buy/sell EMPIRE from Include in Fee address (6544ms)
+        ✔ Should not be take fee when buy/sell EMPIRE from Exclude in Fee address (3334ms)
+        ✔ Should be take correct fee when buy Empire and Reflect Fee to Holder (992ms)
 
 
-  31 passing (4m)
+  62 passing (12m)

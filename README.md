@@ -2,9 +2,9 @@
 
 ## BSC Testnet Deployment
 
-Bridge Vault Address = 0x297B60d2992b4E3b30334cd585DF3715A1772fA5
+Bridge Vault Address = 0xb5f85FeECeB0db58E9322246186027E7E7c23dEd
 
-Empire Address = 0x4Fed0290ed509910Aa869C8D5930e4E6f2A34AB0
+Empire Address = 0x62f35EFC09EFAEa46172Dc4A52def6184f0ED22d
 
-https://testnet.bscscan.com/address/0x297B60d2992b4E3b30334cd585DF3715A1772fA5#code
-https://testnet.bscscan.com/address/0x4Fed0290ed509910Aa869C8D5930e4E6f2A34AB0#code
+Bridge Vault deployed to: https://testnet.bscscan.com/address/0xb5f85FeECeB0db58E9322246186027E7E7c23dEd#code
+EmpireToken deployed to: https://testnet.bscscan.com/address/0x62f35EFC09EFAEa46172Dc4A52def6184f0ED22d#code

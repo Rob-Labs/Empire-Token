@@ -94,6 +94,9 @@ contract EmpireToken is IERC20, Ownable {
     address public liquidityWallet;
     address public teamWallet;
 
+    // to accommodate lock or unlock balance by bridge
+    address public bridgeVault;
+
     IUniswapV2Router02 public uniswapV2Router;
 
     address public bridge;
@@ -143,7 +146,6 @@ contract EmpireToken is IERC20, Ownable {
     event LogSetBuyFees(address indexed setter, BuyFee buyFee);
     event LogSetSellFees(address indexed setter, SellFee sellFee);
     event LogSetRouterAddress(address indexed setter, address router);
-    event LogUpdateGasForProcessing(address indexed setter, uint256 value);
     event LogUpdateLiquidityWallet(
         address indexed setter,
         address liquidityWallet
@@ -155,11 +157,8 @@ contract EmpireToken is IERC20, Ownable {
         uint256 amount
     );
     event LogWithdrawal(address indexed recipient, uint256 tAmount);
-    event LogTransferByBridge(
-        address indexed from,
-        address indexed to,
-        uint256 tAmount
-    );
+    event LogLockByBridge(address indexed account, uint256 tAmount);
+    event LogUnlockByBridge(address indexed account, uint256 tAmount);
     event LogDeliver(address indexed from, uint256 tAmount);
 
     modifier lockTheSwap() {
@@ -171,7 +170,8 @@ contract EmpireToken is IERC20, Ownable {
     constructor(
         address _router,
         address _marketingWallet,
-        address _teamWallet
+        address _teamWallet,
+        address _bridgeVault
     ) {
         _rOwned[_msgSender()] = _rTotal;
 
@@ -179,6 +179,10 @@ contract EmpireToken is IERC20, Ownable {
         burnWallet = address(0xdead);
         liquidityWallet = owner();
         teamWallet = _teamWallet;
+
+        // exclude bridge Vault from receive reflection
+        bridgeVault = _bridgeVault;
+        _isExcluded[bridgeVault] = true;
 
         IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(_router);
         // Create a uniswap pair for this new token
@@ -233,6 +237,13 @@ contract EmpireToken is IERC20, Ownable {
 
     function totalSupply() external pure override returns (uint256) {
         return _tTotal;
+    }
+
+    /**
+     * @dev because bridgeVault not receive reward
+     */
+    function circulatingSupply() external view returns (uint256) {
+        return _tTotal - _tOwned[bridgeVault];
     }
 
     /**
@@ -397,6 +408,7 @@ contract EmpireToken is IERC20, Ownable {
     }
 
     function includeInReward(address account) external onlyOwner {
+        require(account != bridgeVault, "Bridge Vault can't receive reward");
         require(_isExcluded[account], "Account is already included");
         for (uint256 i = 0; i < _excluded.length; i++) {
             if (_excluded[i] == account) {
@@ -1067,34 +1079,45 @@ contract EmpireToken is IERC20, Ownable {
         emit LogSetBridge(msg.sender, bridge);
     }
 
-    function transferByBridge(
-        address from,
-        address to,
-        uint256 tAmount
-    ) external onlyBridge {
-        require(from != address(0), "Zero address");
+    /**
+     * @dev need approval from account
+     */
+    function lock(address account, uint256 tAmount) external onlyBridge {
+        require(account != address(0), "Zero address");
         require(tAmount > 0, "Lock amount must be greater than zero");
 
-        if (_isExcluded[from] && !_isExcluded[to]) {
-            _transferFromExcluded(from, to, tAmount);
-        } else if (!_isExcluded[from] && _isExcluded[to]) {
-            _transferToExcluded(from, to, tAmount);
-        } else if (_isExcluded[from] && _isExcluded[to]) {
-            _transferBothExcluded(from, to, tAmount);
+        if (!_isExcluded[account]) {
+            _transferToExcluded(account, bridgeVault, tAmount);
         } else {
-            _transferStandard(from, to, tAmount);
+            _transferBothExcluded(account, bridgeVault, tAmount);
         }
 
         _approve(
-            from,
+            account,
             _msgSender(),
             balanceCheck(
-                _allowances[from][_msgSender()],
+                _allowances[account][_msgSender()],
                 tAmount,
                 "ERC20: transfer amount exceeds allowance"
             )
         );
 
-        emit LogTransferByBridge(from, to, tAmount);
+        emit LogLockByBridge(account, tAmount);
+    }
+
+    /**
+     * @dev no need approval, because bridgeVault balance is controlled by EMPIRE
+     */
+    function unlock(address account, uint256 tAmount) external onlyBridge {
+        require(account != address(0), "Zero address");
+        require(tAmount > 0, "Unlock amount must be greater than zero");
+
+        if (!_isExcluded[account]) {
+            _transferFromExcluded(bridgeVault, account, tAmount);
+        } else {
+            _transferBothExcluded(bridgeVault, account, tAmount);
+        }
+
+        emit LogUnlockByBridge(account, tAmount);
     }
 }

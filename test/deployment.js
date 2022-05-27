@@ -57,12 +57,17 @@ describe("Empire Token Deployment Test", function () {
       newWallet,
       ...addrs
     ] = await ethers.getSigners();
-
+    const EmpireBridgeVault = await ethers.getContractFactory(
+      "EmpireBridgeVault"
+    );
+    bridgeVault = await EmpireBridgeVault.deploy();
+    await bridgeVault.deployed();
     const Token = await ethers.getContractFactory("EmpireToken");
     token = await Token.deploy(
       uniswapV2RouterAddress,
       marketingWallet.address,
-      teamWallet.address
+      teamWallet.address,
+      bridgeVault.address
     );
     await token.deployed();
   });
