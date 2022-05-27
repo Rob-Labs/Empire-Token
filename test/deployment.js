@@ -2,9 +2,10 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 // const dotenv = require("dotenv");
 
-const deadAddress = "0x000000000000000000000000000000000000dEaD";
+const { deadAddress, uniswapV2RouterAddress } = require("./helpers/address");
+const { EMPIRE_TOTAL_SUPPLY } = require("./helpers/utils");
 
-describe("Empire Token", function () {
+describe("Empire Token Deployment Test", function () {
   let deployer;
   let marketingWallet;
   let teamWallet;
@@ -25,8 +26,6 @@ describe("Empire Token", function () {
 
   let bridgeVault;
   let token;
-
-  const maxSupplyBn = ethers.BigNumber.from("1000000000000000000");
 
   beforeEach(async function () {
     // await ethers.provider.send("hardhat_reset"); // This resets removes the fork
@@ -58,55 +57,55 @@ describe("Empire Token", function () {
       newWallet,
       ...addrs
     ] = await ethers.getSigners();
-    // Deploy contract
-    const EmpireBridgeVault = await ethers.getContractFactory(
-      "EmpireBridgeVault"
-    );
-    bridgeVault = await EmpireBridgeVault.deploy();
-    await bridgeVault.deployed();
+
     const Token = await ethers.getContractFactory("EmpireToken");
     token = await Token.deploy(
+      uniswapV2RouterAddress,
       marketingWallet.address,
-      teamWallet.address,
-      bridgeVault.address
+      teamWallet.address
     );
     await token.deployed();
-
-    // let's assume we finish presale, so I enable trading on each test
-    // await token.enableTrading();
   });
 
-  describe("Deployment", function () {
-    it("Has a correct name 'EmpireToken'", async function () {
-      expect(await token.name()).to.equal("EmpireToken");
-    });
+  it("Has a correct name 'EmpireToken'", async function () {
+    expect(await token.name()).to.equal("EmpireToken");
+  });
 
-    it("Has a correct symbol 'EMPIRE'", async function () {
-      expect(await token.symbol()).to.equal("EMPIRE");
-    });
+  it("Has a correct symbol 'EMPIRE'", async function () {
+    expect(await token.symbol()).to.equal("EMPIRE");
+  });
 
-    it("Has 9 decimals", async function () {
-      expect(await token.decimals()).to.equal(9);
-    });
+  it("Has 9 decimals", async function () {
+    expect(await token.decimals()).to.equal(9);
+  });
 
-    it("Has 1 billion tokens with 9 decimal units (10^18)", async function () {
-      expect(await token.totalSupply()).to.equal(maxSupplyBn);
-    });
+  it("Has 1 billion tokens with 9 decimal units (10^18)", async function () {
+    expect(await token.totalSupply()).to.equal(EMPIRE_TOTAL_SUPPLY);
+  });
 
-    it("Correct Marketing address wallet", async function () {
-      expect(await token.marketingWallet()).to.equal(marketingWallet.address);
-    });
+  it("Correct Marketing address wallet", async function () {
+    expect(await token.marketingWallet()).to.equal(marketingWallet.address);
+  });
 
-    it("Correct Team address wallet", async function () {
-      expect(await token.teamWallet()).to.equal(teamWallet.address);
-    });
+  it("Correct Team address wallet", async function () {
+    expect(await token.teamWallet()).to.equal(teamWallet.address);
+  });
 
-    it("Correct Liquidity address wallet", async function () {
-      expect(await token.liquidityWallet()).to.equal(deployer.address);
-    });
+  it("Correct Liquidity address wallet set to Deployer Address", async function () {
+    expect(await token.liquidityWallet()).to.equal(deployer.address);
+  });
 
-    it("Correct Dead (burn) address wallet", async function () {
-      expect(await token.burnWallet()).to.equal(deadAddress);
-    });
+  it("Correct Dead (burn) address wallet", async function () {
+    expect(await token.burnWallet()).to.equal(deadAddress);
+  });
+
+  it("Trading is disabled by default", async function () {
+    expect(await token.isTradingEnabled()).to.equal(false);
+  });
+
+  it("All Empire Token supply send to deployer address", async function () {
+    expect(await token.balanceOf(deployer.address)).to.equal(
+      EMPIRE_TOTAL_SUPPLY
+    );
   });
 });
