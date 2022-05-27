@@ -81,8 +81,6 @@ Empire Token Deployment Test
   Empire Token Transfer Test
     Transfer at Presale Time
       ✔ Transfer when Presale Time require sender and receiver is excluded from fee (1295ms)
-    Transfer at Presale Time
-      ✔ Transfer when Presale Time require sender and receiver is excluded from fee (1295ms)
     Transfer after Presale Time
       Transfers tokens between accounts
         ✔ Transfer fails when sender doesn't have enough tokens
