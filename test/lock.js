@@ -2,16 +2,14 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 // const dotenv = require("dotenv");
 
-// const uniswapV2RouterAbi = require("./abi/IUniswapV2Router02.json").abi;
-// const uniswapV2PairAbi = require("./abi/IUniswapV2Pair.json").abi;
-// const uniswapV2RouterAddress = "0x9Ac64Cc6e4415144C455BD8E4837Fea55603e5c3";
+const { uniswapV2RouterAddress } = require("./helpers/address");
 const deadAddress = "0x000000000000000000000000000000000000dEaD";
 
 const airdropValue = ethers.utils.parseUnits("200000", 9);
 const mintValue = ethers.utils.parseUnits("20000", 9);
 const burnValue = ethers.utils.parseUnits("2000", 9);
 
-describe("Empire Token", function () {
+describe("Empire Token Interaction with bridge", function () {
   let deployer;
   let marketingWallet;
   let teamWallet;
@@ -71,6 +69,7 @@ describe("Empire Token", function () {
     await bridgeVault.deployed();
     const Token = await ethers.getContractFactory("EmpireToken");
     token = await Token.deploy(
+      uniswapV2RouterAddress,
       marketingWallet.address,
       teamWallet.address,
       bridgeVault.address
@@ -78,7 +77,7 @@ describe("Empire Token", function () {
     await token.deployed();
 
     // let's assume we finish presale, so I enable trading on each test
-    await token.enableTrading();
+    await token.setEnableTrading(true);
     await token.setBridge(bridgeAddr.address);
 
     // airdrop for client
@@ -90,8 +89,8 @@ describe("Empire Token", function () {
     await token.transfer(client5.address, airdropValue);
   });
 
-  describe("Check Burn and Mint from Bridge", function () {
-    it("Correct balance change after burn", async function () {
+  describe("Check Lock and Unlock from Bridge", function () {
+    it("Correct balance change after lock", async function () {
       const client1_balance = await token.balanceOf(client1.address);
       const client2_balance_before = await token.balanceOf(client2.address);
       const bridgeVault_balance_before = await token.balanceOf(
@@ -105,11 +104,11 @@ describe("Empire Token", function () {
       );
       expect(client1_balance).to.equal(airdropValue);
 
-      expect(token.connect(bridgeAddr).burn(client1.address, burnValue)).to.be
+      expect(token.connect(bridgeAddr).lock(client1.address, burnValue)).to.be
         .reverted;
 
       await token.connect(client1).approve(bridgeAddr.address, burnValue);
-      await token.connect(bridgeAddr).burn(client1.address, burnValue);
+      await token.connect(bridgeAddr).lock(client1.address, burnValue);
 
       const client1_balance_after = await token.balanceOf(client1.address);
       const client2_balance_after_burn = await token.balanceOf(client2.address);
@@ -128,7 +127,7 @@ describe("Empire Token", function () {
       expect(client1_balance_after).to.equal(client1_balance.sub(burnValue));
     });
 
-    it("Correct balance change after mint", async function () {
+    it("Correct balance change after unlock", async function () {
       const client1_balance = await token.balanceOf(client1.address);
       const client2_balance_before = await token.balanceOf(client2.address);
       const bridgeVault_balance_before = await token.balanceOf(
@@ -143,7 +142,7 @@ describe("Empire Token", function () {
 
       expect(client1_balance).to.equal(airdropValue);
 
-      await token.connect(bridgeAddr).mint(client1.address, burnValue);
+      await token.connect(bridgeAddr).unlock(client1.address, burnValue);
 
       const client1_balance_after = await token.balanceOf(client1.address);
       const client2_balance_after_mint = await token.balanceOf(client2.address);

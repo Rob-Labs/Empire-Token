@@ -16,6 +16,7 @@ async function main() {
   // We get the contract to deploy
   const _marketingWallet = "0x9BDF45659d8C0BEa1c59b6C66fa27a4E13c6C619";
   const _teamWallet = "0x3A4019F2131322567ca3Ff955C1fA2407C893Dd9";
+  const _router = "0x9Ac64Cc6e4415144C455BD8E4837Fea55603e5c3";
 
   const EmpireBridgeVault = await ethers.getContractFactory(
     "EmpireBridgeVault"
@@ -27,6 +28,7 @@ async function main() {
   // We get the contract to deploy
   const EmpireToken = await ethers.getContractFactory("EmpireToken");
   const empire = await EmpireToken.deploy(
+    _router,
     _marketingWallet,
     _teamWallet,
     bridgeVault.address
