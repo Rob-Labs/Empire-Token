@@ -24,6 +24,7 @@ contract Bridge is Ownable, Pausable, ReentrancyGuard {
 
     address public validator;
     uint256 public fee = 1 * 10**(18 - 4); // 0.0001 Ether (just for test)
+    // solhint-disable-next-line var-name-mixedcase
     address payable public TREASURY;
 
     uint256 public minAmount = 1;
@@ -84,10 +85,8 @@ contract Bridge is Ownable, Pausable, ReentrancyGuard {
         address token,
         uint256 amount,
         address to,
-        uint256 toChainId,
-        uint256 deadline
+        uint256 toChainId
     ) external payable whenNotPaused nonReentrant nonContract {
-        require(deadline >= block.timestamp, "Bridge: EXPIRED");
         require(toChainId != cID(), "Invalid Bridge");
         require(isActiveChain[toChainId], "toChainId is not Active");
         require(
@@ -158,12 +157,14 @@ contract Bridge is Ownable, Pausable, ReentrancyGuard {
 
     modifier nonContract() {
         require(!isContract(msg.sender), "contract not allowed");
+        // solhint-disable-next-line avoid-tx-origin
         require(msg.sender == tx.origin, "proxy contract not allowed");
         _;
     }
 
     function cID() public view returns (uint256) {
         uint256 id;
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             id := chainid()
         }
