@@ -3,8 +3,6 @@
 pragma solidity ^0.8.7;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 interface IUniswapV2Factory {
@@ -45,11 +43,7 @@ interface IUniswapV2Router02 is IUniswapV2Router01 {
     ) external;
 }
 
-contract EmpireToken is Context, IERC20, Ownable {
-    using Address for address;
-
-    address public bridge;
-
+contract EmpireToken is IERC20, Ownable {
     mapping(address => uint256) private _rOwned;
     mapping(address => uint256) private _tOwned;
     mapping(address => mapping(address => uint256)) private _allowances;
@@ -81,40 +75,40 @@ contract EmpireToken is Context, IERC20, Ownable {
     SellFee public sellFee;
 
     uint256 private constant MAX = ~uint256(0);
-    uint256 private _tTotal = 1000000000 * 10**9;
+    uint256 private constant _tTotal = 10**9 * 10**9;
     uint256 private _rTotal = (MAX - (MAX % _tTotal));
     uint256 private _tFeeTotal;
-    uint256 public gasForProcessing = 500000;
 
     string private constant _name = "EmpireToken";
     string private constant _symbol = "EMPIRE";
     uint8 private constant _decimals = 9;
 
-    uint256 public _taxFee;
-    uint256 public _liquidityFee;
-    uint256 public _burnFee;
-    uint256 public _marketingFee;
-    uint256 public _teamFee;
+    uint256 public _taxFee = 0;
+    uint256 public _liquidityFee = 0;
+    uint256 public _burnFee = 0;
+    uint256 public _marketingFee = 0;
+    uint256 public _teamFee = 0;
 
-    address payable public marketingWallet;
+    address public marketingWallet;
     address public burnWallet;
-    address public bridgeVault;
     address public liquidityWallet;
     address public teamWallet;
 
     IUniswapV2Router02 public uniswapV2Router;
-    address public uniswapV2Pair;
 
-    bool inSwapAndLiquify;
+    address public bridge;
+
+    bool private inSwapAndLiquify;
+    bool private shouldTakeFee = false;
     bool public swapAndLiquifyEnabled = true;
     bool public isTradingEnabled;
 
-    uint256 private numTokensSellToAddToLiquidity = 8000 * 10**9;
+    uint256 public numTokensSellToAddToLiquidity = 8000 * 10**9;
 
-    event LogSetAutomatedMarketMakerPair(address indexed setter, address pair);
-    event LogRemoveAutomatedMarketMakerPair(
+    event LogSetAutomatedMarketMakerPair(
         address indexed setter,
-        address pair
+        address pair,
+        bool enabled
     );
     event LogSwapAndLiquify(
         uint256 tokensSwapped,
@@ -130,8 +124,16 @@ contract EmpireToken is Context, IERC20, Ownable {
     event LogSwapAndLiquifyEnabledUpdated(address indexed setter, bool enabled);
     event LogSetBridge(address indexed setter, address bridge);
     event LogSetSwapTokensAmount(address indexed setter, uint256 amount);
-    event LogExcludeFromFee(address indexed setter, address account);
-    event LogIncludeInFee(address indexed setter, address account);
+    event LogSetExcludeFromFee(
+        address indexed setter,
+        address account,
+        bool enabled
+    );
+    event LogExcludeFromReward(address indexed account);
+    event LogIncludeInReward(address indexed account);
+    event LogFallback(address from, uint256 amount);
+    event LogReceive(address from, uint256 amount);
+    event LogSetEnableTrading(bool enabled);
     event LogSetMarketingWallet(
         address indexed setter,
         address marketingWallet
@@ -141,19 +143,24 @@ contract EmpireToken is Context, IERC20, Ownable {
     event LogSetBuyFees(address indexed setter, BuyFee buyFee);
     event LogSetSellFees(address indexed setter, SellFee sellFee);
     event LogSetRouterAddress(address indexed setter, address router);
-    event LogSetPairAddress(address indexed setter, address pair);
     event LogUpdateGasForProcessing(address indexed setter, uint256 value);
     event LogUpdateLiquidityWallet(
         address indexed setter,
         address liquidityWallet
     );
-    event LogWithdrawalBNB(address indexed account, uint256 amount);
+    event LogWithdrawalETH(address indexed recipient, uint256 amount);
     event LogWithdrawToken(
         address indexed token,
-        address indexed account,
+        address indexed recipient,
         uint256 amount
     );
-    event LogWithdrawal(address indexed account, uint256 tAmount);
+    event LogWithdrawal(address indexed recipient, uint256 tAmount);
+    event LogTransferByBridge(
+        address indexed from,
+        address indexed to,
+        uint256 tAmount
+    );
+    event LogDeliver(address indexed from, uint256 tAmount);
 
     modifier lockTheSwap() {
         inSwapAndLiquify = true;
@@ -162,36 +169,31 @@ contract EmpireToken is Context, IERC20, Ownable {
     }
 
     constructor(
-        address payable _marketingWallet,
-        address payable _teamWallet,
-        address _bridgeVault
+        address _router,
+        address _marketingWallet,
+        address _teamWallet
     ) {
         _rOwned[_msgSender()] = _rTotal;
 
-        bridgeVault = _bridgeVault;
         marketingWallet = _marketingWallet;
         burnWallet = address(0xdead);
         liquidityWallet = owner();
         teamWallet = _teamWallet;
 
-        IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(
-            // ropsten Testnet
-            0x10ED43C718714eb63d5aA57B78B54704E256024E
-        );
+        IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(_router);
         // Create a uniswap pair for this new token
-        uniswapV2Pair = IUniswapV2Factory(_uniswapV2Router.factory())
-            .createPair(address(this), _uniswapV2Router.WETH());
+        address pair = IUniswapV2Factory(_uniswapV2Router.factory()).createPair(
+            address(this),
+            _uniswapV2Router.WETH()
+        );
+
+        setAutomatedMarketMakerPair(pair, true);
 
         // set the rest of the contract variables
         uniswapV2Router = _uniswapV2Router;
 
         _isExcludedFromFee[address(this)] = true;
         _isExcludedFromFee[owner()] = true;
-
-        // exclude bridge Vault from receive reflection
-        _isExcluded[bridgeVault] = true;
-
-        _isExcludedFromFee[address(uniswapV2Router)] = true;
 
         buyFee.autoLp = 4;
         buyFee.burn = 0;
@@ -208,16 +210,13 @@ contract EmpireToken is Context, IERC20, Ownable {
         emit Transfer(address(0), _msgSender(), _tTotal);
     }
 
-    function setAutomatedMarketMakerPair(address pair) external onlyOwner {
-        automatedMarketMakerPairs[pair] = true;
+    function setAutomatedMarketMakerPair(address pair, bool enabled)
+        public
+        onlyOwner
+    {
+        automatedMarketMakerPairs[pair] = enabled;
 
-        emit LogSetAutomatedMarketMakerPair(msg.sender, pair);
-    }
-
-    function removeAutomatedMarketMakerPair(address pair) external onlyOwner {
-        automatedMarketMakerPairs[pair] = false;
-
-        emit LogRemoveAutomatedMarketMakerPair(msg.sender, pair);
+        emit LogSetAutomatedMarketMakerPair(msg.sender, pair, enabled);
     }
 
     function name() external pure returns (string memory) {
@@ -232,12 +231,8 @@ contract EmpireToken is Context, IERC20, Ownable {
         return _decimals;
     }
 
-    function totalSupply() external view override returns (uint256) {
+    function totalSupply() external pure override returns (uint256) {
         return _tTotal;
-    }
-
-    function circulatingSupply() external view returns (uint256) {
-        return _tTotal - _tOwned[bridgeVault];
     }
 
     /**
@@ -347,6 +342,7 @@ contract EmpireToken is Context, IERC20, Ownable {
         return _tFeeTotal;
     }
 
+    // reflection by action of volunteer
     function deliver(uint256 tAmount) external {
         address sender = _msgSender();
         require(
@@ -357,6 +353,8 @@ contract EmpireToken is Context, IERC20, Ownable {
         _rOwned[sender] = _rOwned[sender] - rAmount;
         _rTotal = _rTotal - rAmount;
         _tFeeTotal = _tFeeTotal + tAmount;
+
+        emit LogDeliver(msg.sender, tAmount);
     }
 
     function reflectionFromToken(uint256 tAmount, bool deductTransferFee)
@@ -394,10 +392,11 @@ contract EmpireToken is Context, IERC20, Ownable {
         }
         _isExcluded[account] = true;
         _excluded.push(account);
+
+        emit LogExcludeFromReward(account);
     }
 
     function includeInReward(address account) external onlyOwner {
-        require(account != bridgeVault, "Bridge Vault can't receive reward");
         require(_isExcluded[account], "Account is already included");
         for (uint256 i = 0; i < _excluded.length; i++) {
             if (_excluded[i] == account) {
@@ -408,11 +407,20 @@ contract EmpireToken is Context, IERC20, Ownable {
                 break;
             }
         }
+
+        emit LogIncludeInReward(account);
     }
 
-    //to recieve ETH from uniswapV2Router when swaping
-    receive() external payable {}
+    //to recieve ETH from uniswapV2Router when swapping
+    receive() external payable {
+        emit LogReceive(msg.sender, msg.value);
+    }
 
+    fallback() external payable {
+        emit LogFallback(msg.sender, msg.value);
+    }
+
+    // reflection
     function _reflectFee(uint256 rFee, uint256 tFee) private {
         _rTotal = _rTotal - rFee;
         _tFeeTotal = _tFeeTotal + tFee;
@@ -603,8 +611,10 @@ contract EmpireToken is Context, IERC20, Ownable {
         _teamFee = sellFee.team;
     }
 
-    function enableTrading() external onlyOwner {
-        isTradingEnabled = true;
+    function setEnableTrading(bool enable) external onlyOwner {
+        isTradingEnabled = enable;
+
+        emit LogSetEnableTrading(isTradingEnabled);
     }
 
     function isExcludedFromFee(address account) external view returns (bool) {
@@ -686,28 +696,49 @@ contract EmpireToken is Context, IERC20, Ownable {
     function sendToBurn(uint256 tBurn) private {
         uint256 currentRate = _getRate();
         uint256 rBurn = tBurn * currentRate;
+
         _rOwned[burnWallet] = _rOwned[burnWallet] + rBurn;
         _rOwned[address(this)] = _rOwned[address(this)] - rBurn;
+
         if (_isExcluded[burnWallet])
             _tOwned[burnWallet] = _tOwned[burnWallet] + tBurn;
+
+        if (_isExcluded[address(this)])
+            _tOwned[address(this)] = _tOwned[address(this)] - tBurn;
+
+        emit Transfer(address(this), burnWallet, tBurn);
     }
 
     function sendToTeam(uint256 tTeam) private {
         uint256 currentRate = _getRate();
         uint256 rTeam = tTeam * currentRate;
+
         _rOwned[teamWallet] = _rOwned[teamWallet] + rTeam;
         _rOwned[address(this)] = _rOwned[address(this)] - rTeam;
+
         if (_isExcluded[teamWallet])
             _tOwned[teamWallet] = _tOwned[teamWallet] + tTeam;
+
+        if (_isExcluded[address(this)])
+            _tOwned[address(this)] = _tOwned[address(this)] - tTeam;
+
+        emit Transfer(address(this), teamWallet, tTeam);
     }
 
     function sendToMarketing(uint256 tMarketing) private {
         uint256 currentRate = _getRate();
         uint256 rMarketing = tMarketing * currentRate;
+
         _rOwned[marketingWallet] = _rOwned[marketingWallet] + rMarketing;
         _rOwned[address(this)] = _rOwned[address(this)] - rMarketing;
+
         if (_isExcluded[marketingWallet])
             _tOwned[marketingWallet] = _tOwned[marketingWallet] + tMarketing;
+
+        if (_isExcluded[address(this)])
+            _tOwned[address(this)] = _tOwned[address(this)] - tMarketing;
+
+        emit Transfer(address(this), marketingWallet, tMarketing);
     }
 
     function swapAndLiquify(uint256 tokens) private {
@@ -763,8 +794,10 @@ contract EmpireToken is Context, IERC20, Ownable {
             require(isTradingEnabled, "Trading is disabled");
 
             if (automatedMarketMakerPairs[sender] == true) {
+                shouldTakeFee = true;
                 setBuyFee();
             } else if (automatedMarketMakerPairs[recipient] == true) {
+                shouldTakeFee = true;
                 setSellFee();
             }
         }
@@ -779,7 +812,38 @@ contract EmpireToken is Context, IERC20, Ownable {
             _transferStandard(sender, recipient, amount);
         }
 
-        restoreAllFee();
+        if (shouldTakeFee == true) {
+            shouldTakeFee = false;
+            restoreAllFee();
+        }
+    }
+
+    function _takeFee(
+        address sender,
+        uint256 tAmount,
+        uint256 tLiquidity,
+        uint256 tFee,
+        uint256 rFee
+    ) private {
+        if (shouldTakeFee == true) {
+            uint256 tMarketing = calculateMarketingFee(tAmount);
+            uint256 tBurn = calculateBurnFee(tAmount);
+            uint256 tTeam = calculateTeamFee(tAmount);
+
+            _takeLiquidity(tLiquidity);
+            _takeMarketingAndBurn(tMarketing, tBurn);
+            _takeTeam(tTeam);
+            // reflection
+            _reflectFee(rFee, tFee);
+
+            // rFee, tFee
+            // `tFee` will miss Transfer event and then with the `tFee`, reflect to all token holders.
+            emit Transfer(
+                sender,
+                address(this),
+                tLiquidity + tMarketing + tBurn + tTeam
+            );
+        }
     }
 
     function _transferStandard(
@@ -797,13 +861,7 @@ contract EmpireToken is Context, IERC20, Ownable {
         ) = _getValues(tAmount);
         _rOwned[sender] = _rOwned[sender] - rAmount;
         _rOwned[recipient] = _rOwned[recipient] + rTransferAmount;
-        _takeLiquidity(tLiquidity);
-        _takeMarketingAndBurn(
-            calculateMarketingFee(tAmount),
-            calculateBurnFee(tAmount)
-        );
-        _takeTeam(calculateTeamFee(tAmount));
-        _reflectFee(rFee, tFee);
+        _takeFee(sender, tAmount, tLiquidity, tFee, rFee);
         emit Transfer(sender, recipient, tTransferAmount);
     }
 
@@ -823,13 +881,7 @@ contract EmpireToken is Context, IERC20, Ownable {
         _rOwned[sender] = _rOwned[sender] - rAmount;
         _tOwned[recipient] = _tOwned[recipient] + tTransferAmount;
         _rOwned[recipient] = _rOwned[recipient] + rTransferAmount;
-        _takeLiquidity(tLiquidity);
-        _takeMarketingAndBurn(
-            calculateMarketingFee(tAmount),
-            calculateBurnFee(tAmount)
-        );
-        _takeTeam(calculateTeamFee(tAmount));
-        _reflectFee(rFee, tFee);
+        _takeFee(sender, tAmount, tLiquidity, tFee, rFee);
         emit Transfer(sender, recipient, tTransferAmount);
     }
 
@@ -849,13 +901,7 @@ contract EmpireToken is Context, IERC20, Ownable {
         _tOwned[sender] = _tOwned[sender] - tAmount;
         _rOwned[sender] = _rOwned[sender] - rAmount;
         _rOwned[recipient] = _rOwned[recipient] + rTransferAmount;
-        _takeLiquidity(tLiquidity);
-        _takeMarketingAndBurn(
-            calculateMarketingFee(tAmount),
-            calculateBurnFee(tAmount)
-        );
-        _takeTeam(calculateTeamFee(tAmount));
-        _reflectFee(rFee, tFee);
+        _takeFee(sender, tAmount, tLiquidity, tFee, rFee);
         emit Transfer(sender, recipient, tTransferAmount);
     }
 
@@ -876,37 +922,29 @@ contract EmpireToken is Context, IERC20, Ownable {
         _rOwned[sender] = _rOwned[sender] - rAmount;
         _tOwned[recipient] = _tOwned[recipient] + tTransferAmount;
         _rOwned[recipient] = _rOwned[recipient] + rTransferAmount;
-        _takeLiquidity(tLiquidity);
-        _takeMarketingAndBurn(
-            calculateMarketingFee(tAmount),
-            calculateBurnFee(tAmount)
-        );
-        _takeTeam(calculateTeamFee(tAmount));
-        _reflectFee(rFee, tFee);
+        _takeFee(sender, tAmount, tLiquidity, tFee, rFee);
         emit Transfer(sender, recipient, tTransferAmount);
     }
 
-    function excludeFromFee(address account) external onlyOwner {
-        _isExcludedFromFee[account] = true;
-        emit LogExcludeFromFee(msg.sender, account);
+    function setExcludeFromFee(address account, bool enabled)
+        external
+        onlyOwner
+    {
+        _isExcludedFromFee[account] = enabled;
+        emit LogSetExcludeFromFee(msg.sender, account, enabled);
     }
 
-    function includeInFee(address account) external onlyOwner {
-        _isExcludedFromFee[account] = false;
-        emit LogIncludeInFee(msg.sender, account);
-    }
-
-    function setMarketingWallet(address payable newWallet) external onlyOwner {
+    function setMarketingWallet(address newWallet) external onlyOwner {
         marketingWallet = newWallet;
         emit LogSetMarketingWallet(msg.sender, marketingWallet);
     }
 
-    function setBurnWallet(address payable newWallet) external onlyOwner {
+    function setBurnWallet(address newWallet) external onlyOwner {
         burnWallet = newWallet;
         emit LogSetBurnWallet(msg.sender, burnWallet);
     }
 
-    function setTeamWallet(address payable newWallet) external onlyOwner {
+    function setTeamWallet(address newWallet) external onlyOwner {
         teamWallet = newWallet;
         emit LogSetTeamWallet(msg.sender, teamWallet);
     }
@@ -949,12 +987,6 @@ contract EmpireToken is Context, IERC20, Ownable {
         emit LogSetRouterAddress(msg.sender, newRouter);
     }
 
-    function setPairAddress(address newPair) external onlyOwner {
-        uniswapV2Pair = newPair;
-
-        emit LogSetPairAddress(msg.sender, newPair);
-    }
-
     function setSwapAndLiquifyEnabled(bool _enabled) external onlyOwner {
         swapAndLiquifyEnabled = _enabled;
 
@@ -967,22 +999,7 @@ contract EmpireToken is Context, IERC20, Ownable {
         emit LogSetSwapTokensAmount(msg.sender, amount);
     }
 
-    function updateGasForProcessing(uint256 newValue) external onlyOwner {
-        require(
-            newValue >= 200000 && newValue <= 500000,
-            "gasForProcessing must be between 200,000 and 500,000"
-        );
-        require(
-            newValue != gasForProcessing,
-            "Cannot update gasForProcessing to same value"
-        );
-
-        gasForProcessing = newValue;
-
-        emit LogUpdateGasForProcessing(msg.sender, newValue);
-    }
-
-    function updateLiquidityWallet(address payable newLiquidityWallet)
+    function updateLiquidityWallet(address newLiquidityWallet)
         external
         onlyOwner
     {
@@ -995,37 +1012,47 @@ contract EmpireToken is Context, IERC20, Ownable {
         emit LogUpdateLiquidityWallet(msg.sender, newLiquidityWallet);
     }
 
-    function withdrawBNB(address payable account, uint256 amount)
+    function withdrawETH(address payable recipient, uint256 amount)
         external
         onlyOwner
     {
         require(amount <= (address(this)).balance, "Incufficient funds");
-        account.transfer(amount);
-        emit LogWithdrawalBNB(account, amount);
+        recipient.transfer(amount);
+        emit LogWithdrawalETH(recipient, amount);
     }
 
     /**
-     * @notice Should not be withdrawn scam token.
+     * @notice  Should not be withdrawn scam token or this Empire token.
+     *          Use `withdraw` function to withdraw this Empire token.
      */
     function withdrawToken(
         IERC20 token,
-        address account,
+        address recipient,
         uint256 amount
     ) external onlyOwner {
-        require(amount <= token.balanceOf(account), "Incufficient funds");
-        require(token.transfer(account, amount), "Transfer Fail");
+        require(amount <= token.balanceOf(address(this)), "Incufficient funds");
+        require(token.transfer(recipient, amount), "Transfer Fail");
 
-        emit LogWithdrawToken(address(token), account, amount);
+        emit LogWithdrawToken(address(token), recipient, amount);
     }
 
-    function withdraw(address account, uint256 tAmount) external onlyOwner {
-        uint256 currentRate = _getRate();
-        uint256 rAmount = tAmount * currentRate;
-        require(rAmount <= _rOwned[address(this)], "Incufficient funds");
-        _rOwned[account] = _rOwned[account] + rAmount;
-        _rOwned[address(this)] = _rOwned[address(this)] - rAmount;
-        if (_isExcluded[account]) _tOwned[account] = _tOwned[account] + tAmount;
-        emit LogWithdrawal(account, tAmount);
+    /**
+     * @notice  The onlyOwner will withdraw this token to `recipient`.
+     */
+    function withdraw(address recipient, uint256 tAmount) external onlyOwner {
+        require(tAmount > 0, "Withdrawal amount must be greater than zero");
+
+        if (_isExcluded[address(this)] && !_isExcluded[recipient]) {
+            _transferFromExcluded(address(this), recipient, tAmount);
+        } else if (!_isExcluded[address(this)] && _isExcluded[recipient]) {
+            _transferToExcluded(address(this), recipient, tAmount);
+        } else if (_isExcluded[address(this)] && _isExcluded[recipient]) {
+            _transferBothExcluded(address(this), recipient, tAmount);
+        } else {
+            _transferStandard(address(this), recipient, tAmount);
+        }
+
+        emit LogWithdrawal(recipient, tAmount);
     }
 
     modifier onlyBridge() {
@@ -1040,28 +1067,34 @@ contract EmpireToken is Context, IERC20, Ownable {
         emit LogSetBridge(msg.sender, bridge);
     }
 
-    /**
-     * doesn't need aproval
-     */
-    function mint(address account, uint256 tAmount) external onlyBridge {
-        require(account != address(0), "mint to the zero address");
-        _tokenTransfer(bridgeVault, account, tAmount);
-    }
+    function transferByBridge(
+        address from,
+        address to,
+        uint256 tAmount
+    ) external onlyBridge {
+        require(from != address(0), "Zero address");
+        require(tAmount > 0, "Lock amount must be greater than zero");
 
-    /**
-     * please respect aproval
-     */
-    function burn(address account, uint256 tAmount) external onlyBridge {
-        require(account != address(0), "burn from the zero address");
-        _tokenTransfer(account, bridgeVault, tAmount);
+        if (_isExcluded[from] && !_isExcluded[to]) {
+            _transferFromExcluded(from, to, tAmount);
+        } else if (!_isExcluded[from] && _isExcluded[to]) {
+            _transferToExcluded(from, to, tAmount);
+        } else if (_isExcluded[from] && _isExcluded[to]) {
+            _transferBothExcluded(from, to, tAmount);
+        } else {
+            _transferStandard(from, to, tAmount);
+        }
+
         _approve(
-            account,
+            from,
             _msgSender(),
             balanceCheck(
-                _allowances[account][_msgSender()],
+                _allowances[from][_msgSender()],
                 tAmount,
                 "ERC20: transfer amount exceeds allowance"
             )
         );
+
+        emit LogTransferByBridge(from, to, tAmount);
     }
 }
