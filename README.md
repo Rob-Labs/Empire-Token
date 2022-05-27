@@ -3,7 +3,9 @@
 ## BSC Testnet Deployment
 
 Bridge Vault deployed to: https://testnet.bscscan.com/address/0xb5f85FeECeB0db58E9322246186027E7E7c23dEd#code
+
 EmpireToken deployed to: https://testnet.bscscan.com/address/0x62f35EFC09EFAEa46172Dc4A52def6184f0ED22d#code
+
 Bridge deployed to: https://testnet.bscscan.com/address/0x784585F7847F3AAe9d5fb8a85f0b8C9786b60D51#code
 
 ## Test Result
