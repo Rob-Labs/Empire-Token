@@ -225,7 +225,7 @@ describe("Empire Token Reflection and Fee Test", function () {
       );
     });
 
-    it("Should be take fee when buy Empire", async function () {
+    it("Should be take fee when buy Empire although buyer is exclude from fee", async function () {
       // check deployer address is exclude from fee
       expect(await token.isExcludedFromFee(deployer.address)).to.be.equal(true);
 
