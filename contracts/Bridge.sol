@@ -43,7 +43,6 @@ contract Bridge is Ownable, Pausable, ReentrancyGuard {
     event LogSetTreasury(address indexed treasury);
     event LogSetMinAmount(uint256 minAmount);
     event LogSetMaxAmount(uint256 maxAmount);
-    event LogUpdateActiveChainList(uint256 chainId, bool state);
     event LogUpdateBridgeTokenPairList(
         address fromToken,
         uint256 toChainId,
@@ -88,7 +87,6 @@ contract Bridge is Ownable, Pausable, ReentrancyGuard {
         uint256 toChainId
     ) external payable whenNotPaused nonReentrant nonContract {
         require(toChainId != cID(), "Invalid Bridge");
-        require(isActiveChain[toChainId], "toChainId is not Active");
         require(
             bridgeTokenPair[token][toChainId] != address(0),
             "Invalid Bridge Token"
@@ -185,14 +183,6 @@ contract Bridge is Ownable, Pausable, ReentrancyGuard {
         maxAmount = _maxAmount;
 
         emit LogSetMaxAmount(maxAmount);
-    }
-
-    function updateActiveChainList(uint256 chainId, bool isActive)
-        external
-        onlyOwner
-    {
-        isActiveChain[chainId] = isActive;
-        emit LogUpdateActiveChainList(chainId, isActive);
     }
 
     function updateBridgeTokenPairList(
