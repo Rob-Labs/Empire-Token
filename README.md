@@ -2,14 +2,13 @@
 
 ## BSC Testnet Deployment
 
-Bridge Vault Address = 0xb5f85FeECeB0db58E9322246186027E7E7c23dEd
-
-Empire Address = 0x62f35EFC09EFAEa46172Dc4A52def6184f0ED22d
-
 Bridge Vault deployed to: https://testnet.bscscan.com/address/0xb5f85FeECeB0db58E9322246186027E7E7c23dEd#code
 EmpireToken deployed to: https://testnet.bscscan.com/address/0x62f35EFC09EFAEa46172Dc4A52def6184f0ED22d#code
+Bridge deployed to: https://testnet.bscscan.com/address/0x784585F7847F3AAe9d5fb8a85f0b8C9786b60D51#code
 
 ## Test Result
+
+### EMPIRE TOKEN TEST RESULT
 
 Empire Token Deployment Test
 
@@ -116,3 +115,58 @@ Empire Token Transfer Test
         ✔ Should be take correct fee when buy Empire and Reflect Fee to Holder (992ms)
 
 62 passing (12m)
+
+### BRIDGE CONTRACT TEST RESULT
+
+Bridge Contract Test Case
+
+    Set Fee Function
+      ✔ Only Owner can call this function
+      ✔ Should emit LogSetFee event
+      ✔ Function should correct change state
+    Set Maximal Amount Function
+      ✔ Only Owner can call this function
+      ✔ New Maximal Amount should be greater than or equal with Minimal Amount
+      ✔ Should emit LogSetMaxAmount event
+      ✔ Function should correct change state
+    Set Miniminal Amount Function
+      ✔ Only Owner can call this function
+      ✔ New Miniminal Amount should be lower than or equal with Maximal Amount
+      ✔ Should emit LogSetMinAmount event
+      ✔ Function should correct change state
+    Set New Validator Address Function
+      ✔ Only Owner can call this function
+      ✔ Should emit LogSetValidator event
+      ✔ Function should correct change state
+    Set New Treasury Address Function
+      ✔ Only Owner can call this function
+      ✔ Should emit LogSetTreasury event
+      ✔ Function should correct change state
+    Set Token Pair List Function
+      ✔ Only Owner can call this function
+      ✔ Should emit LogUpdateBridgeTokenPairList event
+      ✔ Function should correct change state
+
+Interact with EMPIRE Token
+
+    SWAP Function
+      ✔ Swap will fail if its on paused state
+      ✔ Swap will fail if amount below Minimum amount set by bridge
+      ✔ Swap will fail if amount greater than Maximum amount set by bridge
+      ✔ Swap will fail if token not supported by bridge
+      ✔ Swap will fail if fee not fulfilled
+      ✔ Swap should need approval from token holder
+      ✔ Swap should emit LogSwap event
+      ✔ Swap should transfer fee to treasury address (44ms)
+      ✔ Swap should emit LogLockByBridge on EMPIRE Contract
+      ✔ Swap should transfer token from holder to BRIDGE VAULT (47ms)
+    Redeem Function
+      ✔ Only Validator can use this function
+      ✔ Redeem amount should be greater or equal than minimum amount bridge set
+      ✔ Redeem amount should be lower or equal than maximum amount bridge set
+      ✔ Redeem will fail if redeemed twice or more
+      ✔ Redeem should emit LogRedeem
+      ✔ Redeem should emit LogUnlockByBridge on EMPIRE Contract
+      ✔ Redeem should transfer balance from BRIDGE VAULT to holder address
+
+37 passing (6m)
