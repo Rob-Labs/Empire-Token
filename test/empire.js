@@ -66,7 +66,7 @@ describe("Empire Token Full Test", function () {
    * so we deploy PancakeSwap contract to local chain before running test
    *
    */
-  before(async function () {
+  beforeEach(async function () {
     // get signers
     [
       pancakeDeployer,
@@ -387,16 +387,18 @@ describe("Empire Token Full Test", function () {
         it("Function should correct change state", async function () {
           await token
             .connect(empireDeployer)
-            .setAutomatedMarketMakerPair(newWallet.address, true);
+            .setAutomatedMarketMakerPair(newWallet.address, false);
+
+          expect(
+            await token.automatedMarketMakerPairs(newWallet.address)
+          ).to.be.equal(false);
+
           await token
             .connect(empireDeployer)
-            .setAutomatedMarketMakerPair(client10.address, false);
+            .setAutomatedMarketMakerPair(newWallet.address, true);
           expect(
             await token.automatedMarketMakerPairs(newWallet.address)
           ).to.be.equal(true);
-          expect(
-            await token.automatedMarketMakerPairs(client10.address)
-          ).to.be.equal(false);
         });
       });
 
@@ -595,7 +597,7 @@ describe("Empire Token Full Test", function () {
     });
 
     describe("Transfer after Presale Time", function () {
-      beforeEach(async function () {
+      before(async function () {
         // set trading enabled
         await token.connect(empireDeployer).setEnableTrading(true);
       });
@@ -669,7 +671,7 @@ describe("Empire Token Full Test", function () {
     });
 
     describe("Liquidity Test", function () {
-      beforeEach(async function () {
+      before(async function () {
         // nothing
       });
 
