@@ -14,13 +14,26 @@ async function main() {
   // await hre.run('compile');
 
   // We get the contract to deploy
-  const _validator = "0x3631f25ea6f2368D3A927685acD2C5c43CE05049";
-  const _treasury = "0x3631f25ea6f2368D3A927685acD2C5c43CE05049";
+  const _validator = "0x6a091301bCF7Baa9d18ebB5FF651D75f075Fa53f";
+  const _treasury = "0x6a091301bCF7Baa9d18ebB5FF651D75f075Fa53f";
 
   const Bridge = await ethers.getContractFactory("Bridge");
   const bridge = await Bridge.deploy(_validator, _treasury);
   await bridge.deployed();
   console.log("Bridge deployed to:", bridge.address);
+
+  try {
+    await hre.run('verify', {
+      address: bridge.address,
+      constructorArgsParams: [
+        _validator, 
+        _treasury
+      ],
+    })
+  } catch (error) {
+    console.error(error)
+    console.log(`Smart contract at address ${bridge.address} is already verified`)
+  }
 }
 
 // We recommend this pattern to be able to use async/await everywhere
