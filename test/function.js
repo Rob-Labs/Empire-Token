@@ -239,12 +239,12 @@ describe("Empire Token Write Function Test", function () {
         await token
           .connect(deployer)
           .setAutomatedMarketMakerPair(client10.address, false);
-        expect(token.automatedMarketMakerPairs(newWallet.address)).to.be.equal(
-          true
-        );
-        expect(token.automatedMarketMakerPairs(client10.address)).to.be.equal(
-          false
-        );
+        expect(
+          await token.automatedMarketMakerPairs(newWallet.address)
+        ).to.be.equal(true);
+        expect(
+          await token.automatedMarketMakerPairs(client10.address)
+        ).to.be.equal(false);
       });
     });
 
