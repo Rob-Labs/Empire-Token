@@ -23,6 +23,7 @@
     "solidity-coverage": "^0.7.16"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^4.6.0"
+    "@openzeppelin/contracts": "^4.6.0",
+    "@uniswap/lib": "^4.0.1-alpha"
   }
 }
