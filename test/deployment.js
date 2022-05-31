@@ -1,47 +1,58 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-// const dotenv = require("dotenv");
 
-const { deadAddress, uniswapV2RouterAddress } = require("./helpers/address");
+const { deadAddress } = require("./helpers/address");
 const { EMPIRE_TOTAL_SUPPLY } = require("./helpers/utils");
+const { uniswapV2PairAbi } = require("./helpers/abi");
 
 describe("Empire Token Deployment Test", function () {
-  let deployer;
-  let marketingWallet;
-  let teamWallet;
-  let client1;
-  let client2;
-  let client3;
-  let client4;
-  let client5;
-  let client6;
-  let client7;
-  let client8;
-  let client9;
-  let client10;
-  let emptyAddr;
-  let bridgeAddr;
-  let newWallet;
+  let pancakeDeployer;
+  let pancakeFeeReceiver;
+  let empireDeployer;
+  let empireTeam;
+  let empireMarketing;
+  let bridgeValidator;
+  let bridgeFeeReceiver;
   let addrs;
 
+  /**
+   * pancakeswap utilities
+   */
+  let pancakeFactoryContract;
+  let pancakeRouterContract;
+  let pancakePairContract;
+  let wbnbContract;
+
+  /**
+   * bridgeVault stand for EMPIRE BRIDGE VAULT
+   * token is stand for EMPIRE Token
+   */
   let bridgeVault;
   let token;
 
-  beforeEach(async function () {
-    // await ethers.provider.send("hardhat_reset"); // This resets removes the fork
-    // Reset the fork
-    await ethers.provider.send("hardhat_reset", [
-      {
-        forking: {
-          jsonRpcUrl: process.env.BSC_URL,
-        },
-      },
-    ]);
-    // Get signers
+  /**
+   * bridge stand for bridge contract
+   */
+  let bridge;
+
+  let buyPath;
+  let sellPath;
+
+  /**
+   * we want to test empire with PancakeSwap local chain
+   * so we deploy PancakeSwap contract to local chain before running test
+   *
+   */
+  before(async function () {
+    // get signers
     [
-      deployer,
-      marketingWallet,
-      teamWallet,
+      pancakeDeployer,
+      pancakeFeeReceiver,
+      empireDeployer,
+      empireTeam,
+      empireMarketing,
+      bridgeValidator,
+      bridgeFeeReceiver,
       client1,
       client2,
       client3,
@@ -52,24 +63,79 @@ describe("Empire Token Deployment Test", function () {
       client8,
       client9,
       client10,
-      emptyAddr,
-      bridgeAddr,
       newWallet,
+      emptyAddr,
       ...addrs
     ] = await ethers.getSigners();
+
+    // deploy pancake factory first
+    const PancakeFactory = await ethers.getContractFactory("PancakeFactory");
+    pancakeFactoryContract = await PancakeFactory.deploy(
+      pancakeFeeReceiver.address
+    );
+    await pancakeFactoryContract.deployed();
+
+    // deploy WBNB factory first
+    const WBNBContract = await ethers.getContractFactory("WBNB");
+    wbnbContract = await WBNBContract.deploy();
+    await wbnbContract.deployed();
+
+    // deploy Pancake Router first
+    const RouterContract = await ethers.getContractFactory("PancakeRouter");
+    pancakeRouterContract = await RouterContract.deploy(
+      pancakeFactoryContract.address,
+      wbnbContract.address
+    );
+    await wbnbContract.deployed();
+
+    // deploy bridgeVault and EMPIRE
     const EmpireBridgeVault = await ethers.getContractFactory(
-      "EmpireBridgeVault"
+      "EmpireBridgeVault",
+      empireDeployer
     );
     bridgeVault = await EmpireBridgeVault.deploy();
     await bridgeVault.deployed();
-    const Token = await ethers.getContractFactory("EmpireToken");
+
+    const Token = await ethers.getContractFactory(
+      "EmpireToken",
+      empireDeployer
+    );
     token = await Token.deploy(
-      uniswapV2RouterAddress,
-      marketingWallet.address,
-      teamWallet.address,
+      pancakeRouterContract.address,
+      empireMarketing.address,
+      empireTeam.address,
       bridgeVault.address
     );
     await token.deployed();
+
+    /**
+     * bridge deployed by empire deployer
+     */
+    const BridgeContract = await ethers.getContractFactory(
+      "Bridge",
+      empireDeployer
+    );
+
+    // deploy bridge
+    bridge = await BridgeContract.deploy(
+      bridgeValidator.address,
+      bridgeFeeReceiver.address
+    );
+    await bridge.deployed();
+
+    pairAddress = await pancakeFactoryContract.getPair(
+      wbnbContract.address,
+      token.address
+    );
+
+    pairContract = new ethers.Contract(
+      pairAddress,
+      uniswapV2PairAbi,
+      ethers.provider
+    );
+
+    buyPath = [wbnbContract.address, token.address];
+    sellPath = [token.address, wbnbContract.address];
   });
 
   it("Has a correct name 'EmpireToken'", async function () {
@@ -89,15 +155,15 @@ describe("Empire Token Deployment Test", function () {
   });
 
   it("Correct Marketing address wallet", async function () {
-    expect(await token.marketingWallet()).to.equal(marketingWallet.address);
+    expect(await token.marketingWallet()).to.equal(empireMarketing.address);
   });
 
   it("Correct Team address wallet", async function () {
-    expect(await token.teamWallet()).to.equal(teamWallet.address);
+    expect(await token.teamWallet()).to.equal(empireTeam.address);
   });
 
   it("Correct Liquidity address wallet set to Deployer Address", async function () {
-    expect(await token.liquidityWallet()).to.equal(deployer.address);
+    expect(await token.liquidityWallet()).to.equal(empireDeployer.address);
   });
 
   it("Correct Dead (burn) address wallet", async function () {
@@ -109,7 +175,7 @@ describe("Empire Token Deployment Test", function () {
   });
 
   it("All Empire Token supply send to deployer address", async function () {
-    expect(await token.balanceOf(deployer.address)).to.equal(
+    expect(await token.balanceOf(empireDeployer.address)).to.equal(
       EMPIRE_TOTAL_SUPPLY
     );
   });
