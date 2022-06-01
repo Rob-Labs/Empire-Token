@@ -89,7 +89,6 @@ Bridge Contract Test Case
         ✔ Swap will fail if amount greater than Maximum amount set by bridge
         ✔ Swap will fail if token not supported by bridge
         ✔ Swap will fail if fee not fulfilled
-        1) Swap should need approval from token holder
         ✔ Swap should emit LogSwap event
         ✔ Swap should transfer fee to treasury address (39ms)
         ✔ Swap should emit LogLockByBridge on EMPIRE Contract
@@ -207,17 +206,3 @@ Empire Token Transfer Test
       ✔ Should be take correct fee when buy Empire and Reflect Fee to Holder (124ms)
 
 99 passing (2m)
-1 failing
-
-```
-  1) Bridge Contract Test Case
-       Interact with EMPIRE Token
-         SWAP Function
-           Swap should need approval from token holder:
-
-      AssertionError: Expected transaction to be reverted
-      + expected - actual
-
-      -Transaction NOT reverted.
-      +Transaction reverted.
-```

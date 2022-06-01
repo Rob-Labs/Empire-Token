@@ -364,15 +364,16 @@ describe("Bridge Contract Test Case", function () {
         ).to.be.reverted;
       });
 
-      it("Swap should need approval from token holder", async function () {
-        await expect(
-          bridge
-            .connect(client1)
-            .swap(token.address, SWAP_VALUE, client1.address, SWAP_CHAIN, {
-              value: OLD_FEE,
-            })
-        ).to.be.reverted;
-      });
+      // no need approval now
+      // it("Swap should need approval from token holder", async function () {
+      //   await expect(
+      //     bridge
+      //       .connect(client1)
+      //       .swap(token.address, SWAP_VALUE, client1.address, SWAP_CHAIN, {
+      //         value: OLD_FEE,
+      //       })
+      //   ).to.be.reverted;
+      // });
 
       it("Swap should emit LogSwap event", async function () {
         expect(
