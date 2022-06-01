@@ -46,8 +46,8 @@ describe("Bridge Contract Test Case", function () {
   let client6;
   let client7;
   let client8;
-  let client9;
-  let client10;
+  let pancakeDeployer;
+  let pancakeFeeReceiver;
   let emptyAddr;
   let newWallet;
   let addrs;
@@ -56,21 +56,20 @@ describe("Bridge Contract Test Case", function () {
   let new_bridge_validator;
   let new_bridge_treasury;
 
+  /**
+   * pancakeswap utilities
+   */
+  let pancakeFactoryContract;
+  let pancakeRouterContract;
+  let pancakePairContract;
+  let wbnbContract;
+
   let bridge;
   let bridgeVault;
   let token;
   let provider;
 
   beforeEach(async function () {
-    // await ethers.provider.send("hardhat_reset"); // This resets removes the fork
-    // Reset the fork
-    await ethers.provider.send("hardhat_reset", [
-      {
-        forking: {
-          jsonRpcUrl: process.env.BSC_URL,
-        },
-      },
-    ]);
     // Get signers
     [
       deployer,
@@ -84,6 +83,8 @@ describe("Bridge Contract Test Case", function () {
       client6,
       client7,
       client8,
+      pancakeDeployer,
+      pancakeFeeReceiver,
       new_bridge_validator,
       new_bridge_treasury,
       bridge_validator,
@@ -113,13 +114,13 @@ describe("Bridge Contract Test Case", function () {
 
   describe("Set Fee Function", function () {
     it("Only Owner can call this function", async function () {
-      expect(bridge.connect(client1).setFee(NEW_FEE)).to.be.revertedWith(
+      await expect(bridge.connect(client1).setFee(NEW_FEE)).to.be.revertedWith(
         "Ownable: caller is not the owner"
       );
     });
 
     it("Should emit LogSetFee event", async function () {
-      expect(bridge.connect(deployer).setFee(NEW_FEE))
+      expect(await bridge.connect(deployer).setFee(NEW_FEE))
         .to.emit(bridge.address, "LogSetFee")
         .withArgs(NEW_FEE);
     });
@@ -132,19 +133,19 @@ describe("Bridge Contract Test Case", function () {
 
   describe("Set Maximal Amount Function", function () {
     it("Only Owner can call this function", async function () {
-      expect(
+      await expect(
         bridge.connect(client1).setMaxAmount(NEW_MAX_AMOUNT)
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
 
     it("New Maximal Amount should be greater than or equal with Minimal Amount", async function () {
-      expect(bridge.connect(deployer).setMaxAmount(0)).to.be.revertedWith(
+      await expect(bridge.connect(deployer).setMaxAmount(0)).to.be.revertedWith(
         "MaxAmount >= MinAmount"
       );
     });
 
     it("Should emit LogSetMaxAmount event", async function () {
-      expect(bridge.connect(deployer).setMaxAmount(NEW_MAX_AMOUNT))
+      expect(await bridge.connect(deployer).setMaxAmount(NEW_MAX_AMOUNT))
         .to.emit(bridge.address, "LogSetMaxAmount")
         .withArgs(NEW_MAX_AMOUNT);
     });
@@ -157,19 +158,19 @@ describe("Bridge Contract Test Case", function () {
 
   describe("Set Miniminal Amount Function", function () {
     it("Only Owner can call this function", async function () {
-      expect(
+      await expect(
         bridge.connect(client1).setMinAmount(NEW_MAX_AMOUNT)
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
 
     it("New Miniminal Amount should be lower than or equal with Maximal Amount", async function () {
-      expect(
+      await expect(
         bridge.connect(deployer).setMinAmount(NEW_MAX_AMOUNT * 2)
       ).to.be.revertedWith("MinAmount <= MaxAmount");
     });
 
     it("Should emit LogSetMinAmount event", async function () {
-      expect(bridge.connect(deployer).setMinAmount(NEW_MIN_AMOUNT))
+      expect(await bridge.connect(deployer).setMinAmount(NEW_MIN_AMOUNT))
         .to.emit(bridge.address, "LogSetMinAmount")
         .withArgs(NEW_MIN_AMOUNT);
     });
@@ -182,14 +183,16 @@ describe("Bridge Contract Test Case", function () {
 
   describe("Set New Validator Address Function", function () {
     it("Only Owner can call this function", async function () {
-      expect(
+      await expect(
         bridge.connect(client1).setValidator(new_bridge_validator.address)
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
 
     it("Should emit LogSetValidator event", async function () {
       expect(
-        bridge.connect(deployer).setValidator(new_bridge_validator.address)
+        await bridge
+          .connect(deployer)
+          .setValidator(new_bridge_validator.address)
       )
         .to.emit(bridge.address, "LogSetValidator")
         .withArgs(new_bridge_validator.address);
@@ -205,13 +208,15 @@ describe("Bridge Contract Test Case", function () {
 
   describe("Set New Treasury Address Function", function () {
     it("Only Owner can call this function", async function () {
-      expect(
+      await expect(
         bridge.connect(client1).setTreasury(new_bridge_treasury.address)
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
 
     it("Should emit LogSetTreasury event", async function () {
-      expect(bridge.connect(deployer).setTreasury(new_bridge_treasury.address))
+      expect(
+        await bridge.connect(deployer).setTreasury(new_bridge_treasury.address)
+      )
         .to.emit(bridge.address, "LogSetTreasury")
         .withArgs(new_bridge_treasury.address);
     });
@@ -224,7 +229,7 @@ describe("Bridge Contract Test Case", function () {
 
   describe("Set Token Pair List Function", function () {
     it("Only Owner can call this function", async function () {
-      expect(
+      await expect(
         bridge
           .connect(client1)
           .updateBridgeTokenPairList(bnbAddress, 3, ethAddress)
@@ -233,7 +238,7 @@ describe("Bridge Contract Test Case", function () {
 
     it("Should emit LogUpdateBridgeTokenPairList event", async function () {
       expect(
-        bridge
+        await bridge
           .connect(deployer)
           .updateBridgeTokenPairList(bnbAddress, 3, ethAddress)
       )
@@ -253,12 +258,40 @@ describe("Bridge Contract Test Case", function () {
 
   describe("Interact with EMPIRE Token", function () {
     beforeEach(async function () {
+      // deploy pancake factory first
+      const PancakeFactory = await ethers.getContractFactory(
+        "PancakeFactory",
+        pancakeDeployer
+      );
+      pancakeFactoryContract = await PancakeFactory.deploy(
+        pancakeFeeReceiver.address
+      );
+      await pancakeFactoryContract.deployed();
+
+      // deploy WBNB factory first
+      const WBNBContract = await ethers.getContractFactory(
+        "WBNB",
+        pancakeDeployer
+      );
+      wbnbContract = await WBNBContract.deploy();
+      await wbnbContract.deployed();
+
+      // deploy Pancake Router first
+      const RouterContract = await ethers.getContractFactory(
+        "PancakeRouter",
+        pancakeDeployer
+      );
+      pancakeRouterContract = await RouterContract.deploy(
+        pancakeFactoryContract.address,
+        wbnbContract.address
+      );
+      await pancakeRouterContract.deployed();
       provider = ethers.provider;
       // const { chainId } = await provider.getNetwork();
       const Token = await ethers.getContractFactory("EmpireToken");
       // deploy empire
       token = await Token.deploy(
-        uniswapV2RouterAddress,
+        pancakeRouterContract.address,
         marketingWallet.address,
         teamWallet.address,
         bridgeVault.address
@@ -290,7 +323,7 @@ describe("Bridge Contract Test Case", function () {
     describe("SWAP Function", function () {
       it("Swap will fail if its on paused state", async function () {
         await bridge.connect(deployer).setPause();
-        expect(
+        await expect(
           bridge
             .connect(client1)
             .swap(token.address, SWAP_VALUE, client1.address, SWAP_CHAIN)
@@ -298,7 +331,7 @@ describe("Bridge Contract Test Case", function () {
       });
 
       it("Swap will fail if amount below Minimum amount set by bridge", async function () {
-        expect(
+        await expect(
           bridge
             .connect(client1)
             .swap(token.address, 10, client1.address, SWAP_CHAIN)
@@ -306,7 +339,7 @@ describe("Bridge Contract Test Case", function () {
       });
 
       it("Swap will fail if amount greater than Maximum amount set by bridge", async function () {
-        expect(
+        await expect(
           bridge
             .connect(client1)
             .swap(token.address, NEW_MAX_AMOUNT, client1.address, SWAP_CHAIN)
@@ -314,7 +347,7 @@ describe("Bridge Contract Test Case", function () {
       });
 
       it("Swap will fail if token not supported by bridge", async function () {
-        expect(
+        await expect(
           bridge
             .connect(client1)
             .swap(bnbAddress, SWAP_VALUE, client1.address, SWAP_CHAIN)
@@ -322,7 +355,7 @@ describe("Bridge Contract Test Case", function () {
       });
 
       it("Swap will fail if fee not fulfilled", async function () {
-        expect(
+        await expect(
           bridge
             .connect(client1)
             .swap(token.address, SWAP_VALUE, client1.address, SWAP_CHAIN, {
@@ -332,7 +365,7 @@ describe("Bridge Contract Test Case", function () {
       });
 
       it("Swap should need approval from token holder", async function () {
-        expect(
+        await expect(
           bridge
             .connect(client1)
             .swap(token.address, SWAP_VALUE, client1.address, SWAP_CHAIN, {
@@ -343,7 +376,7 @@ describe("Bridge Contract Test Case", function () {
 
       it("Swap should emit LogSwap event", async function () {
         expect(
-          bridge
+          await bridge
             .connect(client1)
             .swap(token.address, SWAP_VALUE, client1.address, SWAP_CHAIN, {
               value: OLD_FEE,
@@ -400,7 +433,7 @@ describe("Bridge Contract Test Case", function () {
 
     describe("Redeem Function", function () {
       it("Only Validator can use this function", async function () {
-        expect(
+        await expect(
           bridge
             .connect(client1)
             .redeem(
@@ -410,11 +443,11 @@ describe("Bridge Contract Test Case", function () {
               client1.address,
               SWAP_CHAIN
             )
-        ).to.be.revertedWith("Ownable: caller is not the deployer");
+        ).to.be.revertedWith("DENIED : Not Validator");
       });
 
       it("Redeem amount should be greater or equal than minimum amount bridge set", async function () {
-        expect(
+        await expect(
           bridge
             .connect(bridge_validator)
             .redeem(TX_HASH, token.address, 1, client1.address, SWAP_CHAIN)
@@ -422,7 +455,7 @@ describe("Bridge Contract Test Case", function () {
       });
 
       it("Redeem amount should be lower or equal than maximum amount bridge set", async function () {
-        expect(
+        await expect(
           bridge
             .connect(bridge_validator)
             .redeem(
@@ -445,7 +478,7 @@ describe("Bridge Contract Test Case", function () {
             client1.address,
             SWAP_CHAIN
           );
-        expect(
+        await expect(
           bridge
             .connect(bridge_validator)
             .redeem(
@@ -460,7 +493,7 @@ describe("Bridge Contract Test Case", function () {
 
       it("Redeem should emit LogRedeem", async function () {
         expect(
-          bridge
+          await bridge
             .connect(bridge_validator)
             .redeem(
               TX_HASH,
@@ -474,7 +507,7 @@ describe("Bridge Contract Test Case", function () {
 
       it("Redeem should emit LogUnlockByBridge on EMPIRE Contract", async function () {
         expect(
-          bridge
+          await bridge
             .connect(bridge_validator)
             .redeem(
               TX_HASH,

@@ -102,7 +102,7 @@ describe("Empire Token Write Function Test", function () {
       pancakeFactoryContract.address,
       wbnbContract.address
     );
-    await wbnbContract.deployed();
+    await pancakeRouterContract.deployed();
 
     // deploy bridgeVault and EMPIRE
     const EmpireBridgeVault = await ethers.getContractFactory(
@@ -240,14 +240,16 @@ describe("Empire Token Write Function Test", function () {
   describe("Only Owner Write Methods", function () {
     describe("excludeFromReward Function", function () {
       it("Only deployer can use this function", async function () {
-        expect(
+        await expect(
           token.connect(client1).excludeFromReward(newWallet.address)
         ).to.be.revertedWith("Ownable: caller is not the owner");
       });
 
       it("Should emit LogExcludeFromReward event", async function () {
         expect(
-          token.connect(empireDeployer).excludeFromReward(newWallet.address)
+          await token
+            .connect(empireDeployer)
+            .excludeFromReward(newWallet.address)
         )
           .to.emit(token.address, "LogExcludeFromReward")
           .withArgs(newWallet.address);
@@ -266,15 +268,18 @@ describe("Empire Token Write Function Test", function () {
 
     describe("includeInReward Function", function () {
       it("Only deployer can use this function", async function () {
-        expect(
+        await expect(
           token.connect(client1).includeInReward(newWallet.address)
         ).to.be.revertedWith("Ownable: caller is not the owner");
       });
 
       it("Should Reverted if already include in reward", async function () {
-        expect(
+        // we include first
+        await token.connect(empireDeployer).includeInReward(newWallet.address);
+        // check if already included
+        await expect(
           token.connect(empireDeployer).includeInReward(newWallet.address)
-        ).to.be.revertedWith("Account is already excluded");
+        ).to.be.revertedWith("Account is already included");
       });
 
       it("Should emit LogIncludeInReward event", async function () {
@@ -282,7 +287,9 @@ describe("Empire Token Write Function Test", function () {
         await token
           .connect(empireDeployer)
           .excludeFromReward(newWallet.address);
-        expect(token.connect(empireDeployer).includeInReward(newWallet.address))
+        expect(
+          await token.connect(empireDeployer).includeInReward(newWallet.address)
+        )
           .to.emit(token.address, "LogIncludeInReward")
           .withArgs(newWallet.address);
       });
@@ -300,7 +307,7 @@ describe("Empire Token Write Function Test", function () {
 
     describe("setAutomatedMarketMakerPair Function", function () {
       it("Only deployer can use this function", async function () {
-        expect(
+        await expect(
           token
             .connect(client1)
             .setAutomatedMarketMakerPair(newWallet.address, true)
@@ -309,7 +316,7 @@ describe("Empire Token Write Function Test", function () {
 
       it("Should emit LogSetAutomatedMarketMakerPair event", async function () {
         expect(
-          token
+          await token
             .connect(empireDeployer)
             .setAutomatedMarketMakerPair(newWallet.address, true)
         )
@@ -337,14 +344,14 @@ describe("Empire Token Write Function Test", function () {
 
     describe("setBridge Function", function () {
       it("Only deployer can use this function", async function () {
-        expect(
+        await expect(
           token.connect(client1).setBridge(newWallet.address)
         ).to.be.revertedWith("Ownable: caller is not the owner");
       });
 
       it("Should Reverted if bridge address is same with current bridge address", async function () {
         await token.connect(empireDeployer).setBridge(newWallet.address);
-        expect(
+        await expect(
           token.connect(empireDeployer).setBridge(newWallet.address)
         ).to.be.revertedWith("Same Bridge!");
       });
@@ -358,13 +365,15 @@ describe("Empire Token Write Function Test", function () {
 
     describe("setBurnWallet Function", function () {
       it("Only deployer can use this function", async function () {
-        expect(
+        await expect(
           token.connect(client1).setBurnWallet(newWallet.address)
         ).to.be.revertedWith("Ownable: caller is not the owner");
       });
 
       it("Should emit LogSetBridge event", async function () {
-        expect(token.connect(empireDeployer).setBurnWallet(newWallet.address))
+        expect(
+          await token.connect(empireDeployer).setBurnWallet(newWallet.address)
+        )
           .to.emit(token.address, "LogSetBridge")
           .withArgs(newWallet.address);
       });
@@ -372,70 +381,69 @@ describe("Empire Token Write Function Test", function () {
 
     describe("setBuyFees Function", function () {
       it("Only deployer can use this function", async function () {
-        expect(
+        await expect(
           token.connect(client1).setBuyFees(1, 1, 1, 1, 1)
         ).to.be.revertedWith("Ownable: caller is not the owner");
       });
 
       it("Should emit LogSetBuyFees event", async function () {
-        expect(token.connect(empireDeployer).setBuyFees(2, 2, 2, 2, 2)).to.emit(
-          token.address,
-          "LogSetBuyFees"
-        );
+        expect(
+          await token.connect(empireDeployer).setBuyFees(2, 2, 2, 2, 2)
+        ).to.emit(token.address, "LogSetBuyFees");
       });
     });
 
     describe("setSellFees Function", function () {
       it("Only deployer can use this function", async function () {
-        expect(
+        await expect(
           token.connect(client1).setSellFees(1, 1, 1, 1, 1)
         ).to.be.revertedWith("Ownable: caller is not the owner");
       });
 
       it("Should emit LogSetSellFees event", async function () {
         expect(
-          token.connect(empireDeployer).setSellFees(2, 2, 2, 2, 2)
+          await token.connect(empireDeployer).setSellFees(2, 2, 2, 2, 2)
         ).to.emit(token.address, "LogSetSellFees");
       });
     });
 
     describe("setEnableTrading Function", function () {
       it("Only deployer can use this function", async function () {
-        expect(
+        await expect(
           token.connect(client1).setEnableTrading(true)
         ).to.be.revertedWith("Ownable: caller is not the owner");
       });
 
       it("Should emit LogSetEnableTrading event", async function () {
-        expect(token.connect(empireDeployer).setEnableTrading(true))
+        expect(await token.connect(empireDeployer).setEnableTrading(true))
           .to.emit(token.address, "LogSetEnableTrading")
           .withArgs(true);
-        expect(token.connect(empireDeployer).setEnableTrading(true))
-          .to.emit(token.address, "LogSetEnableTrading")
-          .withArgs(true);
-        expect(token.connect(empireDeployer).setEnableTrading(false))
+        expect(await token.connect(empireDeployer).setEnableTrading(false))
           .to.emit(token.address, "LogSetEnableTrading")
           .withArgs(false);
+        expect(await token.connect(empireDeployer).setEnableTrading(true))
+          .to.emit(token.address, "LogSetEnableTrading")
+          .withArgs(true);
       });
     });
 
     describe("setExcludeFromFee Function", function () {
       it("Only deployer can use this function", async function () {
-        expect(
+        await expect(
           token.connect(client1).setExcludeFromFee(newWallet.address, true)
         ).to.be.revertedWith("Ownable: caller is not the owner");
       });
 
       it("Should emit LogSetExcludeFromFee event", async function () {
         expect(
-          token
+          await token
             .connect(empireDeployer)
             .setExcludeFromFee(newWallet.address, true)
         )
           .to.emit(token.address, "LogSetExcludeFromFee")
           .withArgs(empireDeployer.address, newWallet.address, true);
         expect(
-          token
+          await token
             .connect(empireDeployer)
             .setExcludeFromFee(newWallet.address, false)
         )
@@ -446,14 +454,16 @@ describe("Empire Token Write Function Test", function () {
 
     describe("setMarketingWallet Function", function () {
       it("Only deployer can use this function", async function () {
-        expect(
+        await expect(
           token.connect(client1).setMarketingWallet(newWallet.address)
         ).to.be.revertedWith("Ownable: caller is not the owner");
       });
 
       it("Should emit LogSetMarketingWallet event", async function () {
         expect(
-          token.connect(empireDeployer).setMarketingWallet(newWallet.address)
+          await token
+            .connect(empireDeployer)
+            .setMarketingWallet(newWallet.address)
         )
           .to.emit(token.address, "LogSetMarketingWallet")
           .withArgs(empireDeployer.address, newWallet.address);
@@ -462,13 +472,15 @@ describe("Empire Token Write Function Test", function () {
 
     describe("setTeamWallet Function", function () {
       it("Only deployer can use this function", async function () {
-        expect(
+        await expect(
           token.connect(client1).setTeamWallet(newWallet.address)
         ).to.be.revertedWith("Ownable: caller is not the owner");
       });
 
       it("Should emit LogSetTeamWallet event", async function () {
-        expect(token.connect(empireDeployer).setTeamWallet(newWallet.address))
+        expect(
+          await token.connect(empireDeployer).setTeamWallet(newWallet.address)
+        )
           .to.emit(token.address, "LogSetTeamWallet")
           .withArgs(empireDeployer.address, newWallet.address);
       });
@@ -476,14 +488,16 @@ describe("Empire Token Write Function Test", function () {
 
     describe("setRouterAddress Function", function () {
       it("Only deployer can use this function", async function () {
-        expect(
+        await expect(
           token.connect(client1).setRouterAddress(newWallet.address)
         ).to.be.revertedWith("Ownable: caller is not the owner");
       });
 
       it("Should emit LogSetRouterAddress event", async function () {
         expect(
-          token.connect(empireDeployer).setRouterAddress(newWallet.address)
+          await token
+            .connect(empireDeployer)
+            .setRouterAddress(newWallet.address)
         )
           .to.emit(token.address, "LogSetRouterAddress")
           .withArgs(empireDeployer.address, newWallet.address);
@@ -492,13 +506,20 @@ describe("Empire Token Write Function Test", function () {
 
     describe("setSwapAndLiquifyEnabled Function", function () {
       it("Only deployer can use this function", async function () {
-        expect(
+        await expect(
           token.connect(client1).setSwapAndLiquifyEnabled(true)
         ).to.be.revertedWith("Ownable: caller is not the owner");
       });
 
       it("Should emit LogSwapAndLiquifyEnabledUpdated event", async function () {
-        expect(token.connect(empireDeployer).setSwapAndLiquifyEnabled(true))
+        expect(
+          await token.connect(empireDeployer).setSwapAndLiquifyEnabled(false)
+        )
+          .to.emit(token.address, "LogSwapAndLiquifyEnabledUpdated")
+          .withArgs(empireDeployer.address, false);
+        expect(
+          await token.connect(empireDeployer).setSwapAndLiquifyEnabled(true)
+        )
           .to.emit(token.address, "LogSwapAndLiquifyEnabledUpdated")
           .withArgs(empireDeployer.address, true);
       });
@@ -507,13 +528,15 @@ describe("Empire Token Write Function Test", function () {
     describe("setSwapTokensAmount Function", function () {
       const TOKEN_AMOUNT = parseUnits("10000", 9);
       it("Only deployer can use this function", async function () {
-        expect(
+        await expect(
           token.connect(client1).setSwapTokensAmount(TOKEN_AMOUNT)
         ).to.be.revertedWith("Ownable: caller is not the owner");
       });
 
       it("Should emit LogSetSwapTokensAmount event", async function () {
-        expect(token.connect(empireDeployer).setSwapTokensAmount(TOKEN_AMOUNT))
+        expect(
+          await token.connect(empireDeployer).setSwapTokensAmount(TOKEN_AMOUNT)
+        )
           .to.emit(token.address, "LogSetSwapTokensAmount")
           .withArgs(empireDeployer.address, TOKEN_AMOUNT);
       });

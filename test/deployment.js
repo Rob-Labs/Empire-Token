@@ -86,7 +86,7 @@ describe("Empire Token Deployment Test", function () {
       pancakeFactoryContract.address,
       wbnbContract.address
     );
-    await wbnbContract.deployed();
+    await pancakeRouterContract.deployed();
 
     // deploy bridgeVault and EMPIRE
     const EmpireBridgeVault = await ethers.getContractFactory(

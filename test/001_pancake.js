@@ -1,7 +1,7 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
-describe("Pancake Deploy", function () {
+describe("Pancake Factory Deploy", function () {
   let pancakeDeployer;
   let pancakeFeeReceiver;
   let client1;
@@ -57,12 +57,15 @@ describe("Pancake Deploy", function () {
       pancakeFactoryContract.address,
       wbnbContract.address
     );
-    await wbnbContract.deployed();
+    await pancakeRouterContract.deployed();
   });
 
-  it("Deploy Pancake Factory", async function () {
-    console.log(pancakeFactoryContract.address);
-    console.log(wbnbContract.address);
-    console.log(pancakeRouterContract.address);
+  it("Get INIT_CODE_PAIR_HASH", async function () {
+    const INIT_CODE_PAIR_HASH =
+      await pancakeFactoryContract.INIT_CODE_PAIR_HASH();
+
+    console.log(
+      `Please Change init pair hash on \`contracts/uniswap/libraries/PancakeLibrary.sol\` at line 38 to ${INIT_CODE_PAIR_HASH} without \`0x\` before run complete test`
+    );
   });
 });
