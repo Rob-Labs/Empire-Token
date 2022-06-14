@@ -1,5 +1,15 @@
 # NEW Empire Token
 
+## BSC Mainnet Deployment
+
+Bridge Vault deployed to: https://bscscan.com/address/0x51A183d8D79df6892Ab7b8f57b33ba70599515d4#code
+
+EmpireToken deployed to: https://bscscan.com/address/0x0bA7529FD0ea0CA208313f3fB280a91dfAe1B4F3#code
+
+Bridge deployed to: https://bscscan.com/address/0x62AB5437563fC655226239cA8146F727E1D28BF4#code
+
+
+
 ## BSC Testnet Deployment
 
 Bridge Vault deployed to: https://testnet.bscscan.com/address/0x7906F19112D71C08A52CeA3994d0b198ffa5E484#code
