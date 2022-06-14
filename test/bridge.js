@@ -235,10 +235,10 @@ describe("Bridge Contract Test Case", function () {
       expect(
         bridge
           .connect(deployer)
-          .updateBridgeTokenPairList(bnbAddress, 3, ethAddress)
+          .updateBridgeTokenPairList(bnbAddress, 4, ethAddress)
       )
         .to.emit(bridge.address, "LogUpdateBridgeTokenPairList")
-        .withArgs(bnbAddress, 3, ethAddress);
+        .withArgs(bnbAddress, 4, ethAddress);
     });
 
     it("Function should correct change state", async function () {

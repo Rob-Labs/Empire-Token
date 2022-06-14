@@ -14,8 +14,8 @@ async function main() {
   // await hre.run('compile');
 
   // We get the contract to deploy
-  const _validator = "0x6a091301bCF7Baa9d18ebB5FF651D75f075Fa53f";
-  const _treasury = "0x6a091301bCF7Baa9d18ebB5FF651D75f075Fa53f";
+  const _validator = "0xfB3b7AFC05374080060a9c0bfd7E4a23f534Cca4";
+  const _treasury = "0xfB3b7AFC05374080060a9c0bfd7E4a23f534Cca4";
 
   const Bridge = await ethers.getContractFactory("Bridge");
   const bridge = await Bridge.deploy(_validator, _treasury);

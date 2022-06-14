@@ -85,7 +85,7 @@ contract EmpireToken is IERC20, Ownable{
     uint256 private _rTotal = (MAX - (MAX % _tTotal));
     uint256 private _tFeeTotal;
 
-    string private constant _name = "EmpireToken";
+    string private constant _name = "Empire Token";
     string private constant _symbol = "EMPIRE";
     uint8 private constant _decimals = 9;
 
@@ -191,6 +191,13 @@ contract EmpireToken is IERC20, Ownable{
         // exclude bridge Vault from receive reflection
         bridgeVault = _bridgeVault;
         _isExcluded[bridgeVault] = true;
+        _excluded.push(bridgeVault);
+
+
+        // exclude burn address from receive reflection
+        _isExcluded[burnWallet] = true;
+        _excluded.push(burnWallet);
+
 
         IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(_router);
         // Create a uniswap pair for this new token
@@ -252,7 +259,7 @@ contract EmpireToken is IERC20, Ownable{
      * @dev because bridgeVault not receive reward
      */
     function circulatingSupply() external view returns (uint256) {
-        return _tTotal.sub(_tOwned[bridgeVault]);
+        return _tTotal.sub(_tOwned[bridgeVault]).sub(_tOwned[burnWallet]);
     }
 
     /**
@@ -967,13 +974,6 @@ contract EmpireToken is IERC20, Ownable{
         emit LogSetMarketingWallet(msg.sender, marketingWallet);
     }
 
-    function setBurnWallet(address newWallet) external onlyOwner {
-        require(newWallet != address(0), "Zero Address");
-        require(newWallet != burnWallet, "Same Address");
-        burnWallet = newWallet;
-        emit LogSetBurnWallet(msg.sender, burnWallet);
-    }
-
     function setTeamWallet(address newWallet) external onlyOwner {
         require(newWallet != address(0), "Zero Address");
         require(newWallet != teamWallet, "Same Address");
@@ -1115,6 +1115,7 @@ contract EmpireToken is IERC20, Ownable{
         require(account != address(0), "Zero address");
         require(tAmount > 0, "Lock amount must be greater than zero");
         require(tAmount <= balanceOf(account), "Incufficient funds");
+        require(_allowances[account][_msgSender()] >= tAmount, "ERC20: transfer amount exceeds allowance");
 
         if (!_isExcluded[account]) {
             _transferToExcluded(account, bridgeVault, tAmount);
@@ -1122,15 +1123,6 @@ contract EmpireToken is IERC20, Ownable{
             _transferBothExcluded(account, bridgeVault, tAmount);
         }
 
-        // _approve(
-        //     account,
-        //     _msgSender(),
-        //     balanceCheck(
-        //         _allowances[account][_msgSender()],
-        //         tAmount,
-        //         "ERC20: transfer amount exceeds allowance"
-        //     )
-        // );
 
         emit LogLockByBridge(account, tAmount);
     }

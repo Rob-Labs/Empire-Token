@@ -14,8 +14,8 @@ async function main() {
   // await hre.run('compile');
 
   // We get the contract to deploy
-  const _marketingWallet = "0x1547b436463650d5083ecf90D55Acc35fbd58fe4";
-  const _teamWallet = "0xE63d424631bdACa918DC96D67c4Be12Bfd771CF6";
+  const _marketingWallet = "0x7b72c66922170026B1f2cB761E1Db1795135fFcc";
+  const _teamWallet = "0x69563591018Ae4291710896A482936df51f31Fb9";
   const _router = "0x9Ac64Cc6e4415144C455BD8E4837Fea55603e5c3";
 
   const EmpireBridgeVault = await ethers.getContractFactory(

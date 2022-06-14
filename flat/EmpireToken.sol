@@ -478,7 +478,7 @@ contract EmpireToken is IERC20, Ownable {
     uint256 private _rTotal = (MAX - (MAX % _tTotal));
     uint256 private _tFeeTotal;
 
-    string private constant _name = "EmpireToken";
+    string private constant _name = "Empire Token";
     string private constant _symbol = "EMPIRE";
     uint8 private constant _decimals = 9;
 

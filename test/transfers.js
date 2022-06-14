@@ -91,11 +91,11 @@ describe("Empire Token Transfer Test", function () {
       expect(
         token.connect(deployer).transfer(client5.address, 50)
       ).to.be.revertedWith("Trading is disabled");
-
       await token.connect(deployer).setExcludeFromFee(client1.address, true);
 
       expect(token.connect(deployer).transfer(client1.address, 50)).to.not.be
         .reverted;
+
     });
   });
 

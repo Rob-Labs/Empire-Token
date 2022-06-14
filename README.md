@@ -2,11 +2,11 @@
 
 ## BSC Testnet Deployment
 
-Bridge Vault deployed to: https://testnet.bscscan.com/address/0xA335b8faDa1882AceC43Ab309A393958DB876A46#code
+Bridge Vault deployed to: https://testnet.bscscan.com/address/0x7906F19112D71C08A52CeA3994d0b198ffa5E484#code
 
-EmpireToken deployed to: https://testnet.bscscan.com/address/0xa153c52c01Bd386ab1bC3A9186Db3d439C741C7a#code
+EmpireToken deployed to: https://testnet.bscscan.com/address/0xAf643874e2029F87c5E70A05F7F59e034Bb61FC9#code
 
-Bridge deployed to: https://testnet.bscscan.com/address/0x6D8153eDb7fa36eF4E2C992EB353c9d01cc1B18C#code
+Bridge deployed to: https://testnet.bscscan.com/address/0x37049ED46E530bC674cfbA0Be51E8FD0Cda0c86A#code
 
 
 # Clone Repo and Install dependencies

@@ -72,8 +72,8 @@ describe("Empire Token Deployment Test", function () {
     await token.deployed();
   });
 
-  it("Has a correct name 'EmpireToken'", async function () {
-    expect(await token.name()).to.equal("EmpireToken");
+  it("Has a correct name 'Empire Token'", async function () {
+    expect(await token.name()).to.equal("Empire Token");
   });
 
   it("Has a correct symbol 'EMPIRE'", async function () {
