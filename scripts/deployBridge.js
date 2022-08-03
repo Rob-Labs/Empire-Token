@@ -16,6 +16,8 @@ async function main() {
   // We get the contract to deploy
   const _validator = "0xfB3b7AFC05374080060a9c0bfd7E4a23f534Cca4";
   const _treasury = "0xfB3b7AFC05374080060a9c0bfd7E4a23f534Cca4";
+  // const _validator = "0xFaa309b21BB52Ec6B043C3d45e3A9d85FBC63Cce";
+  // const _treasury = "0xFaa309b21BB52Ec6B043C3d45e3A9d85FBC63Cce";
 
   const Bridge = await ethers.getContractFactory("Bridge");
   const bridge = await Bridge.deploy(_validator, _treasury);

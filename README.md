@@ -2,11 +2,11 @@
 
 ## BSC Mainnet Deployment
 
-Bridge Vault deployed to: https://bscscan.com/address/0x51A183d8D79df6892Ab7b8f57b33ba70599515d4#code
+Bridge Vault deployed to: https://bscscan.com/address/0x1C3AD807A565b7cfB24335Be5DEbDFE9cd36aB66#code
 
-EmpireToken deployed to: https://bscscan.com/address/0x0bA7529FD0ea0CA208313f3fB280a91dfAe1B4F3#code
+EmpireToken deployed to: https://bscscan.com/address/0x8a9b3D3Af44c11C09706Ee1d5D90a30065412675#code
 
-Bridge deployed to: https://bscscan.com/address/0x62AB5437563fC655226239cA8146F727E1D28BF4#code
+Bridge deployed to: https://bscscan.com/address/0x95D9A32FF887760ED32DE0C16d661d303A97F196#code
 
 
 

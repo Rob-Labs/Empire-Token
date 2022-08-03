@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.7;
+pragma solidity 0.8.15;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
@@ -21,6 +21,7 @@ interface IERC20 {
 
 contract Bridge is Ownable, Pausable, ReentrancyGuard {
     // state variables
+    uint256 public immutable MAX_FEE = 10 * (10**18);
 
     address public validator;
     uint256 public fee = 1 * 10**(18 - 4); // 0.0001 Ether (just for test)
@@ -157,7 +158,6 @@ contract Bridge is Ownable, Pausable, ReentrancyGuard {
 
     modifier nonContract() {
         require(!isContract(msg.sender), "contract not allowed");
-        // solhint-disable-next-line avoid-tx-origin
         require(msg.sender == tx.origin, "proxy contract not allowed");
         _;
     }
@@ -223,14 +223,17 @@ contract Bridge is Ownable, Pausable, ReentrancyGuard {
 
     function setFee(uint256 _fee) external onlyOwner {
         require(_fee != fee, "Already set fee");
+        require(_fee <= MAX_FEE, "Fee more than max fee");
         fee = _fee;
         emit LogSetFee(fee);
     }
 
+    
+
     // Withdraw functions
     function withdrawETH(address payable recipient) external onlyOwner {
-        require(recipient != address(0));
-        require(address(this).balance > 0, "Incufficient funds");
+        require(recipient != address(0), "Invalid address of the recipient");
+        require(address(this).balance > 0, "Insufficient funds");
 
         uint256 amount = (address(this)).balance;
         recipient.transfer(amount);
@@ -260,4 +263,3 @@ contract Bridge is Ownable, Pausable, ReentrancyGuard {
         emit LogFallback(msg.sender, msg.value);
     }
 }
-

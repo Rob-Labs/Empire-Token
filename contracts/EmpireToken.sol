@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.7;
+pragma solidity 0.8.15;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -96,7 +96,7 @@ contract EmpireToken is IERC20, Ownable{
     uint256 public _teamFee = 0;
 
     address public marketingWallet;
-    address public burnWallet;
+    address public immutable burnWallet;
     address public liquidityWallet;
     address public teamWallet;
 
@@ -122,7 +122,7 @@ contract EmpireToken is IERC20, Ownable{
     event LogSwapAndLiquify(
         uint256 tokensSwapped,
         uint256 ethReceived,
-        uint256 tokensIntoLiqudity
+        uint256 tokensIntoLiquidity
     );
     event LogSwapAndDistribute(
         uint256 forMarketing,
@@ -138,6 +138,7 @@ contract EmpireToken is IERC20, Ownable{
         address account,
         bool enabled
     );
+    event LogTransfer(address from, address to, uint amount);
     event LogExcludeFromReward(address indexed account);
     event LogIncludeInReward(address indexed account);
     event LogFallback(address from, uint256 amount);
@@ -147,7 +148,7 @@ contract EmpireToken is IERC20, Ownable{
         address indexed setter,
         address marketingWallet
     );
-    event LogSetBurnWallet(address indexed setter, address burnWallet);
+    
     event LogSetTeamWallet(address indexed setter, address teamWallet);
     event LogSetBuyFees(address indexed setter, BuyFee buyFee);
     event LogSetSellFees(address indexed setter, SellFee sellFee);
@@ -165,7 +166,9 @@ contract EmpireToken is IERC20, Ownable{
     event LogWithdrawal(address indexed recipient, uint256 tAmount);
     event LogLockByBridge(address indexed account, uint256 tAmount);
     event LogUnlockByBridge(address indexed account, uint256 tAmount);
+    event LogSetBridgeVault(address setter, address _bridgeVault);
     event LogDeliver(address indexed from, uint256 tAmount);
+
 
     modifier lockTheSwap() {
         inSwapAndLiquify = true;
@@ -239,19 +242,19 @@ contract EmpireToken is IERC20, Ownable{
         emit LogSetAutomatedMarketMakerPair(msg.sender, pair, enabled);
     }
 
-    function name() external pure returns (string memory) {
+    function name() external view returns (string memory) {
         return _name;
     }
 
-    function symbol() external pure returns (string memory) {
+    function symbol() external view returns (string memory) {
         return _symbol;
     }
 
-    function decimals() external pure returns (uint8) {
+    function decimals() external view returns (uint8) {
         return _decimals;
     }
 
-    function totalSupply() external pure override returns (uint256) {
+    function totalSupply() external view override returns (uint256) {
         return _tTotal;
     }
 
@@ -289,6 +292,7 @@ contract EmpireToken is IERC20, Ownable{
     {
 
         _transfer(_msgSender(), recipient, amount);
+        emit LogTransfer(_msgSender(), recipient, amount);
         return true;
     }
 
@@ -370,7 +374,7 @@ contract EmpireToken is IERC20, Ownable{
         return _tFeeTotal;
     }
 
-    // reflection by action of volunteer
+     // reflection by action of volunteer
     function deliver(uint256 tAmount) external {
         address sender = _msgSender();
         require(
@@ -440,7 +444,7 @@ contract EmpireToken is IERC20, Ownable{
         emit LogIncludeInReward(account);
     }
 
-    //to recieve ETH from uniswapV2Router when swapping
+    //to receive ETH from uniswapV2Router when swapping
     receive() external payable {
         emit LogReceive(msg.sender, msg.value);
     }
@@ -448,6 +452,7 @@ contract EmpireToken is IERC20, Ownable{
     fallback() external payable {
         emit LogFallback(msg.sender, msg.value);
     }
+    
 
     // reflection
     function _reflectFee(uint256 rFee, uint256 tFee) private {
@@ -645,6 +650,13 @@ contract EmpireToken is IERC20, Ownable{
         isTradingEnabled = enable;
 
         emit LogSetEnableTrading(isTradingEnabled);
+    }
+
+    function setBridgeVault (address _bridgeVault) external onlyOwner {
+        require(_bridgeVault != address(0), "Invalid address");
+        require(bridgeVault != _bridgeVault, "Already set to this value");
+        bridgeVault = _bridgeVault;
+        emit LogSetBridgeVault(msg.sender, bridgeVault);
     }
 
     function isExcludedFromFee(address account) external view returns (bool) {
@@ -988,6 +1000,7 @@ contract EmpireToken is IERC20, Ownable{
         uint256 _tax,
         uint256 _team
     ) external onlyOwner {
+        require(_lp + _marketing + _burn + _tax + _team <= 50, "Max total fee is 50%");
         require(!(buyFee.autoLp == _lp && buyFee.marketing == _marketing && buyFee.burn == _burn && buyFee.tax == _tax &&  buyFee.team == _team), "Nothing is changed");
         buyFee.autoLp = _lp;
         buyFee.marketing = _marketing;
@@ -1005,7 +1018,7 @@ contract EmpireToken is IERC20, Ownable{
         uint256 _tax,
         uint256 _team
     ) external onlyOwner {
-        require(!(sellFee.autoLp == _lp && sellFee.marketing == _marketing && sellFee.burn == _burn && sellFee.tax == _tax &&  sellFee.team == _team), "Nothing is changed");
+        require(_lp + _marketing + _burn + _tax + _team <= 50, "Max total fee is 50%");
         sellFee.autoLp = _lp;
         sellFee.marketing = _marketing;
         sellFee.burn = _burn;
